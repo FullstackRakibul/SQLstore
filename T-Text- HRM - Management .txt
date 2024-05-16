@@ -480,6 +480,68 @@ SELECT  * FROM sqlsysdb.dbo.b_designation WHERE designation_name = @designation
 -------------------------------------------------------------------------------
 
 
+
+DECLARE @DesignationPairs TABLE (
+    OldDesignation VARCHAR(50),
+    NewDesignation VARCHAR(50)
+);
+
+INSERT INTO @DesignationPairs (OldDesignation, NewDesignation)
+VALUES 
+------------------------------------------------------------
+
+
+--------------------------------------------------
+('",OldDesignation,"', '",newDesognation,"'),
+--------------------------------------------------
+
+DECLARE @designation VARCHAR(50);
+DECLARE @newDesignation VARCHAR(50);
+
+-- Iterate through each pair and execute the logic
+DECLARE designations_cursor CURSOR FOR
+SELECT OldDesignation, NewDesignation FROM @DesignationPairs;
+
+OPEN designations_cursor;
+
+FETCH NEXT FROM designations_cursor INTO @designation, @newDesignation;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    DECLARE @newDesignationBan VARCHAR(50),
+            @designationGName VARCHAR(50) = 'Operator',
+            @newDesignationIdFromHRM VARCHAR(50);
+
+    -- Check if the new designation already exists in Common_Designation
+    IF NOT EXISTS (SELECT 1 FROM Common_Designation WHERE DesignationName = @newDesignation)
+    BEGIN
+        INSERT INTO Common_Designation (DesignationName, DesignationNameBan, DesGroupID, GradeId, OrderBy, IsActive, IsDelete)
+        SELECT @newDesignation, @newDesignationBan, (SELECT DesGroupID FROM Common_DesignationGroup WHERE DesGroupName = @designationGName), 0, 99, 1, 0;
+    END
+
+    -- Get the DesignationID for the new designation
+    SELECT @newDesignationIdFromHRM = DesignationID FROM Common_Designation WHERE DesignationName = @newDesignation;
+
+    -- Update sqlsysdb.dbo.b_designation table
+    UPDATE sqlsysdb.dbo.b_designation SET NewTableCodeId = @newDesignationIdFromHRM WHERE designation_name = @designation;
+
+
+    --SELECT * FROM sqlsysdb.dbo.b_designation WHERE designation_name = @designation;
+	--SELECT * FROM Common_Designation WHERE DesignationName = @newDesignation;
+
+    FETCH NEXT FROM designations_cursor INTO @designation, @newDesignation;
+END
+
+CLOSE designations_cursor;
+DEALLOCATE designations_cursor;
+
+
+
+
+
+-------------------------------------------------------------------------------------
+
+
 Muktadir ewdl-024951
 jesmin ccl/nishat -010461
 mofij hdl=029220
