@@ -1,0 +1,854 @@
+USE [msdb]
+GO
+
+/****** Object:  Job [AttendanceDataMigration]    Script Date: 3/6/2024 2:51:42 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:51:42 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'AttendanceDataMigration', 
+		@enabled=0, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'Attendance Data Migration into HeadOffice DB', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'softadmin', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [DBBackup]    Script Date: 3/6/2024 2:51:42 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'DBBackup', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'declare @dateFrom date, @dateTo date
+set @dateFrom=GETDATE()-2
+set @dateTo=GETDATE()
+
+DELETE FROM [192.168.0.13,4368].[FactoryDB].[dbo].[Attendance_EmployeeAttendanceAllFactory] 
+WHERE (WorkDay between @dateFrom AND @dateTo) and CompanyId in (14,42) and UnitId in (16,39,40,73);
+
+INSERT INTO [192.168.0.13,4368].[FactoryDB].[dbo].[Attendance_EmployeeAttendanceAllFactory]
+           ([CompanyName],[UnitName],[DepartmentName],[SectionName],[EmpCode],[EmpName],[DesignationName],[EmpId],[PunchNo],[WorkDay],[AttStatus]
+           ,[InTime] ,[OutTime],[AxWorkTime],[ExWorkTime],[OTHour],[TiffinDay],[Holiday] ,[NightDay],[IfterDay]
+           ,[CategoryName],[CompanyId],[UnitId],[DepartmentId],[SectionId],[DesignationId],[Resigned],[Gross_Salary],[Over_Time],[Over_All],[Over_All_Amt],[Tiffin_Rate]
+           ,[Tiffin_Rate_Amt],[Ifter_Holder],[Ifter_Allowance],[Night_Holder],[Night_Allowance],[Shift_Code],[Emp_Status])
+
+SELECT c.company_name, B.branch_name, bd.department_name, bs.section_name, eb.emp_id, eb.emp_name, bdn.designation_name, ebi.emp_no, ebi.card_no, ea.Work_date, ea.org_att_status, ea.org_in_time, ea.org_out_time ,ea.ax_work_time,ea.ex_work_time,OTHour=isnull(ea.ax_work_time,0)+isnull(ea.ex_work_time,0),ea.tiffin_day,ea.holiday,ea.night_day,ea.ifter_day,ce.category_name 
+,ebi.company_code,ebi.branch_code,ebi.department_code,ebi.section_code,ebi.designation_code 
+,ebi.Resigned,ebs.gross_salary,ebs.Over_Time ,ebs.Over_All,ebs.Over_All_amt,
+ebs.Tiffin_rate,ebs.Tiffin_rate_amt,ebs.Ifter_Holder,ebs.Ifter_Allowance, ebs.Night_Holder,ebs.Night_Allowance,ea.shift_code,emp_status
+FROM
+[HADLsqlsysdb].[DBO].[emp_basic_info] AS ebi INNER JOIN             
+[HADLsqlsysdb].[DBO].[emp_basic] AS eb ON ebi.emp_no = eb.emp_no INNER JOIN        
+[HADLsqlsysdb].[DBO].[emp_Attendance] AS ea ON eb.emp_no = ea.EMP_NO INNER JOIN     
+[HADLsqlsysdb].[DBO].[B_department] AS bd ON ebi.department_code = bd.department_code INNER JOIN     
+[HADLsqlsysdb].[DBO].[B_section] AS bs ON ebi.section_code = bs.section_code INNER JOIN                
+[HADLsqlsysdb].[DBO].[B_designation] AS bdn ON ebi.designation_code = bdn.Designation_code INNER JOIN     
+[HADLsqlsysdb].[DBO].[B_branch] b ON ebi.branch_code = B.branch_code INNER JOIN                 
+[HADLsqlsysdb].[DBO].[B_company] c ON ebi.company_code = c.company_code INNER JOIN
+[HADLsqlsysdb].[DBO].[B_category] ce ON ce.category_code = ebi.emp_status INNER JOIN
+[HADLsqlsysdb].[DBO].[emp_basic_salary] ebs on eb.emp_no=ebs.emp_no
+WHERE (ebi.Resigned = 0) AND (ebi.op IN (1, 2)) AND (ea.Work_date BETWEEN @dateFrom AND @dateTo) 
+UNION ALL  
+SELECT c.company_name, B.branch_name, bd.department_name, bs.section_name, eb.emp_id, eb.emp_name, bdn.designation_name, ebi.emp_no, ebi.card_no, ea.Work_date, ea.org_att_status, ea.org_in_time, ea.org_out_time ,ea.ax_work_time,ea.ex_work_time,OTHour=isnull(ea.ax_work_time,0)+isnull(ea.ex_work_time,0),ea.tiffin_day,ea.holiday,ea.night_day,ea.ifter_day,ce.category_name 
+,ebi.company_code,ebi.branch_code,ebi.department_code,ebi.section_code,ebi.designation_code 
+,ebi.Resigned,ebs.gross_salary,ebs.Over_Time ,ebs.Over_All,ebs.Over_All_amt,
+ebs.Tiffin_rate,ebs.Tiffin_rate_amt,ebs.Ifter_Holder,ebs.Ifter_Allowance, ebs.Night_Holder,ebs.Night_Allowance,ea.shift_code,emp_status
+FROM
+[HSPILsqlsysdb].[DBO].[emp_basic_info] AS ebi INNER JOIN               
+[HSPILsqlsysdb].[DBO].[emp_basic] AS eb ON ebi.emp_no = eb.emp_no INNER JOIN    
+[HSPILsqlsysdb].[DBO].[emp_Attendance] AS ea ON eb.emp_no = ea.EMP_NO INNER JOIN      
+[HSPILsqlsysdb].[DBO].[B_department] AS bd ON ebi.department_code = bd.department_code INNER JOIN   
+[HSPILsqlsysdb].[DBO].[B_section] AS bs ON ebi.section_code = bs.section_code INNER JOIN        
+[HSPILsqlsysdb].[DBO].[B_designation] AS bdn ON ebi.designation_code = bdn.Designation_code INNER JOIN    
+[HSPILsqlsysdb].[DBO].[B_branch] b ON ebi.branch_code = B.branch_code INNER JOIN                  
+[HSPILsqlsysdb].[DBO].[B_company] c ON ebi.company_code = c.company_code INNER JOIN
+[HSPILsqlsysdb].[DBO].[B_category] ce ON ce.category_code = ebi.emp_status INNER JOIN
+[HSPILsqlsysdb].[DBO].[emp_basic_salary] ebs on eb.emp_no=ebs.emp_no
+WHERE (ebi.Resigned = 0) AND (ebi.op IN (1, 2)) AND (ea.Work_date BETWEEN @dateFrom AND @dateTo)', 
+		@database_name=N'master', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'DBBackup', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=8, 
+		@freq_subday_interval=4, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20200716, 
+		@active_end_date=99991231, 
+		@active_start_time=70000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'a7eb840f-5f78-4a9a-aba8-0470d748faf1'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [Daily_Database_Backup.Subplan_1]    Script Date: 3/6/2024 2:52:55 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [Database Maintenance]    Script Date: 3/6/2024 2:52:55 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'Database Maintenance' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'Database Maintenance'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'Daily_Database_Backup.Subplan_1', 
+		@enabled=1, 
+		@notify_level_eventlog=2, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'Database Maintenance', 
+		@owner_login_name=N'softadmin', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Subplan_1]    Script Date: 3/6/2024 2:52:55 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Subplan_1', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'SSIS', 
+		@command=N'/Server "$(ESCAPE_NONE(SRVR))" /SQL "Maintenance Plans\Daily_Database_Backup" /set "\Package\Subplan_1.Disable;false"', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'Daily_Database_Backup.Subplan_1', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=1, 
+		@freq_subday_interval=0, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20170716, 
+		@active_end_date=99991231, 
+		@active_start_time=120000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'f48b6208-e8bd-4989-9ebc-1d72cb4481fc'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+-----------------------------------------------------------------------------------
+
+
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [PunchDataPickAccessManager]    Script Date: 3/6/2024 2:53:15 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:53:15 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'PunchDataPickAccessManager', 
+		@enabled=1, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'softadmin', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [PickPunchDataAccessManager]    Script Date: 3/6/2024 2:53:15 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'PickPunchDataAccessManager', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'INSERT INTO [HADLsqlsysdb].[dbo].[badge_data]
+           ([data_processed]
+           ,[punch_date]
+           ,[card_no]
+           ,[terminal]
+           ,[reader]
+           ,[door_state]
+           ,[error_code]
+           ,[card_level]
+           ,[block]
+           ,[manual]
+           ,[user_code]
+           --,[entry_date]
+           ,[locked])
+    SELECT 0
+		,TransactionTime
+		,CAST(CAST(UserID AS INT) AS VARCHAR(8))
+		,TerminalID
+		,0 
+		,0
+		,1
+		,4
+		,-1
+		,0
+		,100
+		,0
+		 FROM NGAC_AUTHLOG WHERE [AuthType] in (128) AND AuthResult=0 AND TerminalID in (331,336,337,338,339,388) AND TransactionTime>= dateadd(day,-45,cast(GETDATE() as date))
+	EXCEPT ( SELECT  [data_processed]
+           ,[punch_date]
+           ,[card_no]
+           ,[terminal]
+           ,[reader]
+           ,[door_state]
+           ,[error_code]
+           ,[card_level]
+           ,[block]
+           ,[manual]
+           ,[user_code]
+           ,[locked]
+FROM [HADLsqlsysdb].[dbo].[badge_data] where punch_date >= dateadd(day,-45,cast(GETDATE() as date)) and terminal <> ''MA'')', 
+		@database_name=N'NitgenAccessManager', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'DailyPunchPull', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=4, 
+		@freq_subday_interval=15, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20200825, 
+		@active_end_date=99991231, 
+		@active_start_time=73000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'aa4791c1-81bf-48da-a7b3-c278aed2f4a2'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+
+
+-------------------------------------------------------------------------
+
+
+
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [SuprimaHOSendDataToADL-SPIL]    Script Date: 3/6/2024 2:53:39 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:53:39 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SuprimaHOSendDataToADL-SPIL', 
+		@enabled=0, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'softadmin', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Insert]    Script Date: 3/6/2024 2:53:39 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Insert', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'declare @SQL1 varchar(MAX) = '''';
+SET @SQL1=''
+INSERT INTO [HADLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+    --,[user_code]
+)
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	--,100
+
+	FROM [192.168.0.33,4800].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, GetDate(),112),6)) +''] T INNER JOIN
+	[192.168.0.33,4800].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HADLsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+     --,B.[user_code]
+FROM [HADLsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>= dateadd(day,-45,cast(GETDATE() as date)) and terminal<>''''MA'''')
+
+
+INSERT INTO [HADLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+   --,[user_code]
+)
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	--,100
+
+	FROM [192.168.0.33,4800].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, dateadd(mm,-1,GetDate()),112),6)) +''] T INNER JOIN
+	[192.168.0.33,4800].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HADLsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+      --,B.[user_code]
+FROM [HADLsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>= dateadd(day,-45,cast(GETDATE() as date)) and terminal<>''''MA'''')
+
+
+INSERT INTO [HADLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+--    ,[user_code]
+)
+
+	SELECT 
+	 event_time
+	,right(t.unique_id+convert(varchar,t.user_id), len(t.unique_id+convert(varchar,t.user_id))-4)
+	,T.terminal_id
+	,d.HGDoorMode
+--	,100
+
+	FROM [192.168.0.33,4800].[UCDB].[dbo].[''+convert(varchar,''auth_logs_''+LEFT(CONVERT(varchar, GetDate(),112),6)) +''] T INNER JOIN
+	[192.168.0.33,4800].[UCDB].[dbo].[terminals] D ON T.terminal_id=D.terminal_id INNER JOIN
+	[HADLsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.unique_id+convert(varchar,t.user_id)
+	WHERE T.terminal_id IN (''''8135'''',''''8136'''',''''8137'''',''''8138'''')
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+--      ,B.[user_code]
+FROM [HADLsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>= dateadd(day,-45,cast(GETDATE() as date)) and b.terminal<>''''MA'''')
+''
+
+EXEC(@SQL1)
+', 
+		@database_name=N'HADLsqlsysdb', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'CollectorSchedule_Every_15min', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=4, 
+		@freq_subday_interval=15, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20140220, 
+		@active_end_date=99991231, 
+		@active_start_time=60500, 
+		@active_end_time=235959, 
+		@schedule_uid=N'bc47c9ed-77ce-4334-b646-fa4dbedade2e'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+
+
+
+--------------------------------------------------------------------
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [SuprimaHOSendDataToADL-SPIL-New]    Script Date: 3/6/2024 2:53:57 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:53:57 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SuprimaHOSendDataToADL-SPIL-New', 
+		@enabled=0, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'softadmin', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [SuprimaHOSendDataToADL-SPIL-New]    Script Date: 3/6/2024 2:53:57 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'SuprimaHOSendDataToADL-SPIL-New', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'declare @SQL1 varchar(MAX) = '''';
+SET @SQL1=''
+INSERT INTO [HADLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+    ,[user_code])
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	,100
+
+	FROM [192.168.0.13,4368].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, GetDate(),112),6)) +''] T INNER JOIN
+	[192.168.0.13,4368].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HADLsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+      ,B.[user_code]
+FROM [HADLsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>=''''2021-08-01'''')
+
+
+INSERT INTO [HADLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+    ,[user_code])
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	,100
+
+	FROM [192.168.0.13,4368].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, dateadd(mm,-1,GetDate()),112),6)) +''] T INNER JOIN
+	[192.168.0.13,4368].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HADLsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+      ,B.[user_code]
+FROM [HADLsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>=''''2021-08-01'''')
+
+
+INSERT INTO [HSPILsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+    ,[user_code])
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	,100
+
+	FROM [192.168.0.13,4368].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, GetDate(),112),6)) +''] T INNER JOIN
+	[192.168.0.13,4368].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HSPILsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+      ,B.[user_code]
+FROM [HSPILsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>=''''2021-08-01'''')
+
+
+INSERT INTO [HSPILsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+    ,[user_code])
+
+	SELECT 
+	 [dbo].fn_ConvertToDateTime([DEVDT])
+	,right(T.USRID, len(T.USRID)-4)
+	,d.HGDEVID
+	,d.HGDMODE
+	,100
+
+	FROM [192.168.0.13,4368].[BioStarNew_AC].[dbo].[''+convert(varchar,''T_LG''+LEFT(CONVERT(varchar, dateadd(mm,-1,GetDate()),112),6)) +''] T INNER JOIN
+	[192.168.0.13,4368].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID inner join
+	[HSPILsqlsysdb].[dbo].[emp_basic_info] B ON ((CASE WHEN LEN(b.company_code)>1 THEN convert(varchar,b.company_code) ELSE ''''9''''+convert(varchar,b.company_code) END) + convert(varchar,b.branch_code)+convert(varchar,b.card_no))=t.USRID
+	WHERE T.USRID not in (''''UTC+6:00'''',''''1'''') AND LEN(T.USRID)>=5 AND EVT IN (4867,4102,4865)
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+      ,B.[user_code]
+FROM [HSPILsqlsysdb].[dbo].[Badge_data] B WHERE B.[punch_date]>=''''2021-08-01'''')''
+
+EXEC(@SQL1)
+
+
+
+', 
+		@database_name=N'HADLsqlsysdb', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'SuprimaHOSendDataToADL-SPIL-New', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=4, 
+		@freq_subday_interval=5, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20220426, 
+		@active_end_date=99991231, 
+		@active_start_time=60000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'5b38b262-b92c-47c1-bb3b-e5e81f71c9b1'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+-------------------------------------------------------------------------------------------------
+
+
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [SyncWithCentralADL]    Script Date: 3/6/2024 2:54:14 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:54:14 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SyncWithCentralADL', 
+		@enabled=0, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'ADLSERVER\Administrator', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Insert]    Script Date: 3/6/2024 2:54:14 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Insert', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=3, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'EXEC InsertCentralDBProDailyWork', 
+		@database_name=N'HADLsqlsysdb', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'CollectorSchedule_Every_10min', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=8, 
+		@freq_subday_interval=3, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20140220, 
+		@active_end_date=99991231, 
+		@active_start_time=0, 
+		@active_end_time=235959, 
+		@schedule_uid=N'4b24f341-0d27-45ea-8596-eb6642df37b1'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+--------------------------------------------------------------------------
+
+
+
+USE [msdb]
+GO
+
+/****** Object:  Job [syspolicy_purge_history]    Script Date: 3/6/2024 2:54:38 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 3/6/2024 2:54:38 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'syspolicy_purge_history', 
+		@enabled=1, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Verify that automation is enabled.]    Script Date: 3/6/2024 2:54:38 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Verify that automation is enabled.', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=1, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'IF (msdb.dbo.fn_syspolicy_is_automation_enabled() != 1)
+        BEGIN
+            RAISERROR(34022, 16, 1)
+        END', 
+		@database_name=N'master', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Purge history.]    Script Date: 3/6/2024 2:54:38 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Purge history.', 
+		@step_id=2, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'EXEC msdb.dbo.sp_syspolicy_purge_history', 
+		@database_name=N'master', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Erase Phantom System Health Records.]    Script Date: 3/6/2024 2:54:38 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Erase Phantom System Health Records.', 
+		@step_id=3, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'PowerShell', 
+		@command=N'if (''$(ESCAPE_SQUOTE(INST))'' -eq ''MSSQLSERVER'') {$a = ''\DEFAULT''} ELSE {$a = ''''};
+(Get-Item SQLSERVER:\SQLPolicy\$(ESCAPE_NONE(SRVR))$a).EraseSystemHealthPhantomRecords()', 
+		@database_name=N'master', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'syspolicy_purge_history_schedule', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=1, 
+		@freq_subday_interval=0, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20080101, 
+		@active_end_date=99991231, 
+		@active_start_time=20000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'b593a90b-dff8-45f2-9be7-de903d71c485'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+

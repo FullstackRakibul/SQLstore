@@ -1,0 +1,59 @@
+declare @min int
+declare @max int
+
+--set @min = 4959
+--set @max = 67862
+
+select @min = min(EmpCode), @max = max(EmpCode) from HumanResource_EmployeeBasic WITH (NOLOCK)
+
+create table #tmp (MissingID int)
+while @min <= @max
+begin
+   if not exists (select * from HumanResource_EmployeeBasic where EmpCode = @min)
+      insert into #tmp (MissingID) values (@min)
+   set @min = @min + 1
+end
+select * from #tmp
+drop table #tmp
+
+
+------------------------ Final .............................. 
+
+-- =============================================
+-- Author:		<Author,,Rakibul Hasan>
+-- Create date: <Create Date,,26 Nov 2023>
+-- Description:	<Description,, Find Missing Id Retrieve>
+-- =============================================
+
+
+CREATE PROCEDURE FindMissingEmpCodes
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @min INT, @max INT;
+
+    -- Set initial values for @min and @max
+    SELECT @min = MIN(EmpCode), @max = MAX(EmpCode)
+    FROM HumanResource_EmployeeBasic WITH (NOLOCK);
+
+    -- Create a temporary table to store missing IDs
+    CREATE TABLE #tmp (MissingID INT);
+
+    -- Loop through the range of EmpCodes
+    WHILE @min <= @max
+    BEGIN
+        -- Check if EmpCode does not exist in HumanResource_EmployeeBasic
+        IF NOT EXISTS (SELECT 1 FROM HumanResource_EmployeeBasic WHERE EmpCode = @min)
+            INSERT INTO #tmp (MissingID) VALUES (@min);
+
+        -- Move to the next EmpCode
+        SET @min = @min + 1;
+    END
+
+    -- Select the missing EmpCodes
+    SELECT * FROM #tmp;
+
+    -- Drop the temporary table
+    DROP TABLE #tmp;
+END;

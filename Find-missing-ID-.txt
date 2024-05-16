@@ -1,0 +1,17 @@
+declare @min int
+declare @max int
+
+set @min = 4959
+set @max = 67862
+
+select @min = min(EmpCode), @max = max(EmpCode) from HumanResource_EmployeeBasic WITH (NOLOCK)
+
+create table #tmp (MissingID int)
+while @min <= @max
+begin
+   if not exists (select * from HumanResource_EmployeeBasic where EmpCode = @min)
+      insert into #tmp (MissingID) values (@min)
+   set @min = @min + 1
+end
+select * from #tmp
+drop table #tmp

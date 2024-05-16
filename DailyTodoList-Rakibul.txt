@@ -1,0 +1,174 @@
+========================= Todo List Daily ===============================
+
+
+-------------------------( Date : 26 Nov 2023 )---------------------------
+
+- add and organized CH24 Dept, Sec, Unit//
+- Employee permission management//
+- Missing HRM punch retrive -6810//
+- Ubio missing data retrive//
+- 68099 finger to all//
+- Wing add //
+
+
+-------------------------( Date : 27 Nov 2023 )---------------------------
+- 66548 finger to all
+- Grade fix //
+- Salary Structure //
+- 58211, card-105 face/finger to all *****
+
+-------------------------( Date 28 Nov 2023 )-----------------------------
+
+- Central Zone File setup
+- Shift details data added
+- Transfer employees
+- Designation setup for CWL 02
+
+-------------------------( Date 30 Nov 2023 )-----------------------------
+
+- EmpCode='048592' - prepunch 277456
+
+------------------------( Date 03 Dec 2023 )-----------------------------
+
+- ERP user details update 
+ 
+-- ERP Update xlsx file
+Email - HumanResource_EmployeeContact
+EmailOffice - HumanResource_EmployeeContact
+present_address - HumanResource_EmployeeContact
+Permanent_address - HumanResource_EmployeeContact
+
+AttBonus 
+SalaryType - 
+
+BankName 
+BranchName
+
+EmpNameBan - HumanResource_EmployeeBasic
+
+BankAccountNo - Payroll_Employee_BasicSalary
+CurrencyId - Payroll_Employee_BasicSalary
+BankId - Payroll_Employee_BasicSalary
+BranchId - Payroll_Employee_BasicSalary
+SalaryPaidCompany - Payroll_Employee_BasicSalary
+CalculationFormulaId - Payroll_Employee_BasicSalary
+
+
+-- Zone Central All Employee master file 
+
+- SectionID - HumanResource_EmployeeBasic
+- EmpTypeID - HumanResource_EmployeeBasic
+- IsFixed - HumanResource_EmployeeBasic
+- BankAccountNo
+- BankId
+
+- AttBonus
+- TiffinAllow
+- IfterAllow
+- NightAllow
+- NightIncentive
+
+------------------------( Date 05 Dec 2023 )-----------------------------
+
+20985 - Leave issue
+
+
+------------------------( Date 09 Dec 2023 )-----------------------------
+
+supplementary salary issues
+025283
+024995
+026414
+
+------------------------( Date 10 Dec 2023 )-----------------------------
+
+re punch - 276788 - id - 048223
+
+
+
+------------------------( Date 11 Dec 2023 )-----------------------------
+
+
+- id: 053390 - S.GM Samsul Haque Babul - Marketings - leave application issues
+- Production Management system, User Name & password add Employee ID: 062665 , 062681, 006971 **
+- Need new create in software Department commercial **
+- 018762 In Punch  Device No Tongi - (7501) - wrong punch from 9119
+
+
+- LINE 012N (310N) => LINE 011N (309N)
+- LINE - 011N (309N) => LINE - 012N (310N)
+
+------------------------( Date 17 Dec 2023 )-----------------------------
+
+re punch - EmpCode:050186 , PrevPunchNo:279587
+
+------------------------( Date 19 Dec 2023 )-----------------------------
+
+anydesk : 1213926159
+
+------------------------( Date 27 Dec 2023 )-----------------------------
+
+emp - 058043 - PrevPunchId = 400267 
+
+
+
+542399556 - Device - 9124 - out device
+542399501 - Device - 9123 - In Device
+542399558 - Device - 9126 - Out Device
+542399498 - Device - 9128 - Out Device
+542399495 - Device - 9125 - In Device
+
+
+050896 - Device - 8016 - 18 Dec, 23 Dec punch missing due to conflict of in out device 
+003819 - in / out punch problem for 16 Dec (ABMS2 shift) 
+
+
+------------------------( Date 01 Jan 2024 )-----------------------------
+
+repunch - EmpCode = '057956',  prevPunch -  508611
+repunch - EmpCode = '057075',  prevPunch -  841186
+
+
+
+------------------------( Date 09 Jan 2024 )-----------------------------
+536189	76938	2	2023	0	14	10	0	0	0	NULL	NULL  --- fixed
+
+
+
+------------------------( Date 10 Jan 2024 )-----------------------------
+650311	139891	3	2023	0	-2	0	NULL	-2	0	NULL	NULL --  fixed
+
+536189	76938	2	2023	0	14	10	0	0	0	NULL	NULL  -- fixed
+
+650310	139891	2	2023	0	14	0	NULL	0	0	NULL	NULL  -- fixed
+ 
+650311	139891	3	2023	0	-2	5	NULL	-2	0	NULL	NULL  --  fixed
+
+------------------------( Date 15 Jan 2024 )-----------------------------
+
+repunch - 047532 prev603046
+
+-------------------------( Date 21 jan 2024 ) ---------------------------
+
+re-punch 
+
+043987
+045781
+047157
+047601
+048463
+........
+277737   
+279055
+601802
+275536
+277274
+........
+
+
+-------------------------( Date 23 jan 2024 ) ---------------------------
+Emp ID : ADL363251
+Wrong FID- 2966932457
+Right FID- 29932457
+
+

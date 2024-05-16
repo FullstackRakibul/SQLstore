@@ -1,0 +1,515 @@
+
+-- designation chnage 
+
+=CONCATENATE("update emp_basic_info set designation_code='",,"' where emp_no = ( select emp_no from emp_basic where emp_id = '",,"' )")
+
+------------------------------------------
+-- grade change 
+
+=CONCATENATE("update b_designation set designation_grade='",,"' where Designation_code='",,"'")
+
+
+---------------------- Apparel increment  ------------
+
+
+insert into TempProposedIncrement ( EmpID , Name,Designation, ProposedAmount, ProposedDate, Category, IsActive, IsUpdated  )
+
+select 'TSL-4B-000253','Md Fakhrul Islam','Assistant Production Coordinator','600','2023-12-01','','1','0' union all
+
+------------------------ force weekOff
+
+insert into empForceWO ( emp_no , CurrentHoliday, CurrentHolidayRemarks, AlterHoliday, AlterHolidayRemarks , IsActive ) 
+	select 1250530,'2023-12-29','Holiday Adjustment 2023-12', '2024-01-06','Holiday Adjustment 2023-12', '0' union all
+	select 1250530,'2023-12-29','Holiday Adjustment 2023-12', '2024-01-06','Holiday Adjustment 2023-12', '0'
+
+
+=CONCATENATE("select emp_no =(select emp_no from emp_basic where emp_id = '",A2,"') ,'2023-12-29','Holiday Adjustment 2023-12', '2024-01-06','Holiday Adjustment 2023-12', '0' union all")
+
+
+------------------------------ Apparel force WO ------------------
+
+select * from empForceWO where emp_no =  ( select emp_no from emp_basic where emp_id = 'TSL-WSE028' )
+
+
+
+update  empForceWO set IsActive = 0  where emp_no =  ( select emp_no from emp_basic where emp_id = 'RGL-SO16328'  ) and CurrentHoliday='2023-12-29'
+
+
+INSERT INTO empForceWO (emp_no, CurrentHoliday, CurrentHolidayRemarks, AlterHoliday, AlterHolidayRemarks, IsActive)
+SELECT emp_no, '2024-03-22', 'eidHolidayAdjustment24RH', '2024-04-11', 'eidHolidayAdjustment24RH', 0
+FROM emp_basic where emp_id='TSL-AC10114'
+
+---------------------------- increment process for apparel --------------------
+
+
+
+
+
+insert into TempProposedIncrement ( EmpID , Name,Designation, ProposedAmount, ProposedDate, Category, IsActive, IsUpdated  )
+
+------ =CONCATENATE("select '",B2,"','",C2,"','",D2,"','",E2,"','2023-12-01','",G2,"','1','0' union all ")
+=CONCATENATE("select '",B2,"','",C2,"','",D2,"','",E2,"','",G2,"','",H2,"','1','0' union all ")
+
+
+
+DECLARE @emp_id varchar(20) ,@effect_date date, @increment_amount decimal, @emp_no bigint ,@gl_company_code bigint ,@gl_branch_code bigint,@return_increment_code bigint=0, @isactive bit=0;
+
+DECLARE emp_cursor CURSOR FOR
+
+SELECT EmpID,ProposedDate,ProposedAmount, IsActive
+FROM TempProposedIncrement
+WHERE IsActive=1 AND IsUpdated=0 --and ProposedDate between DATEADD(DAY, 1, EOMONTH(GETDATE(), -1)) and dateadd(mm,0,EOMONTH(GETDATE()))
+order by ProposedDate;
+
+OPEN emp_cursor
+
+FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+SELECT @emp_no=BI.emp_no,@gl_company_code=BI.company_code,@gl_branch_code=BI.branch_code
+FROM emp_basic B INNER JOIN emp_basic_info BI ON B.emp_no=BI.emp_no WHERE B.emp_id=@emp_id
+
+EXEC [192.168.0.13,4368].[sqlsysdb].[dbo].[Update_increment] @emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0,@return_increment_code OUTPUT
+
+IF (@return_increment_code > 0 )
+BEGIN
+EXEC [dbo].[Update_increment] @return_increment_code,@emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0
+UPDATE TempProposedIncrement SET IsUpdated=1 WHERE EmpID=@emp_id
+END
+
+FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+END
+CLOSE emp_cursor;
+DEALLOCATE emp_cursor;
+
+
+--------------------------------- TISWL _______ Leave Allocation ----------------------
+
+
+
+USE [HTISWLsqlsysdb]
+GO
+/****** Object:  StoredProcedure [dbo].[Pro_ProcessLeaveAllocation_all]    Script Date: 02-Jan-2024 3:20:22 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+--declare @emp_no bigint, @LeaveYear int=2013      
+--select @emp_no=emp_no from emp_basic where emp_id='HO-1548'
+
+--ALTER PROCEDURE [dbo].[Pro_ProcessLeaveAllocation_all] 	
+--@LeaveYear int=0,
+--@CompanyCode bigint=0,
+--@BranchCode bigint=0
+-- AS
+
+BEGIN
+	SET NOCOUNT ON;
+	
+	declare @emp_no bigint,	 @emp_status int, @sex bit, @join_date datetime,@marital_status varchar(20),@LeaveYear int=2024
+	
+	declare employee cursor for
+	
+				SELECT	i.emp_no, i.emp_status, i.sex, i.join_date, p.marital_status
+		  FROM	emp_basic_info AS i INNER JOIN
+                emp_basic_personal AS p ON i.emp_no = p.emp_no
+		 WHERE	(i.Resigned = 0)--and i.company_code =@CompanyCode and i.branch_code=@BranchCode 
+
+
+
+	
+	open employee
+	fetch next from employee into @emp_no, @emp_status, @sex, @join_date,@marital_status
+	while @@fetch_status = 0
+	begin
+		declare @Leave_code int, @Jan float, @Feb float, @Mar float, @Apr float, @May float, @Jun float, @Jul float, @Aug float, @Sep float, @Oct float, @Nov float, @Dec float
+		
+		declare allocation cursor for
+		
+			SELECT [Leave_code],[Jan],[Feb],[Mar],[Apr],[May],[Jun],[Jul],[Aug],[Sep],[Oct],[Nov],[Dec] FROM [LeaveAllocationMst] WHERE LeaveYear = @LeaveYear AND Category_code = @emp_status and Leave_code in (1,2,3,4,5,8,9,10,12,28)
+			--SELECT [Leave_code],[Jan],[Feb],[Mar],[Apr],[May],[Jun],[Jul],[Aug],[Sep],[Oct],[Nov],[Dec] FROM [LeaveAllocationMst] WHERE LeaveYear = @LeaveYear AND Category_code = @emp_status and Leave_code in (1)
+		 
+		if @sex = 0  --and @marital_status ='Unmarried'
+		begin
+			delete FROM [LeaveAllocationDtl] WHERE [Emp_no]=@emp_no AND [Category_code] = @emp_status AND [LeaveYear] = @LeaveYear AND [Leave_code] = 1						
+		end
+		
+		 open allocation
+		 fetch next from allocation into @Leave_code, @Jan, @Feb, @Mar, @Apr, @May, @Jun, @Jul, @Aug, @Sep, @Oct, @Nov, @Dec
+		 while @@fetch_status = 0
+		 begin
+			declare @LeaveAllocated as float
+
+			if YEAR(@join_date) = @LeaveYear
+				begin
+					
+					if month(@join_date) = 1 
+						set @LeaveAllocated = @Jan
+					else if month(@join_date) = 2 
+						set @LeaveAllocated = @Feb 
+					else if month(@join_date) = 3 
+						set @LeaveAllocated = @Mar 				
+					else if month(@join_date) = 4 
+						set @LeaveAllocated = @Apr 
+					else if month(@join_date) = 5 
+						set @LeaveAllocated = @May 
+					else if month(@join_date) = 6 
+						set @LeaveAllocated = @Jun 
+					else if month(@join_date) = 7 
+						set @LeaveAllocated = @Jul 
+					else if month(@join_date) = 8 
+						set @LeaveAllocated = @Aug 
+					else if month(@join_date) = 9 
+						set @LeaveAllocated = @Sep 
+					else if month(@join_date) = 10 
+						set @LeaveAllocated = @Oct 
+					else if month(@join_date) = 11 
+						set @LeaveAllocated = @Nov 
+					else if month(@join_date) = 12 
+						set @LeaveAllocated = @Dec 
+					print('CHECK1')
+					--set @LeaveAllocated = 0
+					print @Leave_code
+					
+					
+					
+					
+					if exists(SELECT [Leave_code] FROM [b_leave] WHERE MarriedFemale = 1 AND JobService = 1 AND [Leave_code] = @Leave_code)
+					begin
+						if @sex = 1  --and @marital_status ='Married'
+						begin
+							
+	
+							if exists(SELECT [Emp_no] FROM [LeaveAllocationDtl] WHERE [Emp_no]=@emp_no AND [Category_code] = @emp_status AND [LeaveYear] = @LeaveYear AND [Leave_code] = @Leave_code)
+								begin
+									UPDATE  [LeaveAllocationDtl]SET [LeaveAllocated]=@LeaveAllocated WHERE [Emp_no]=@emp_no AND [LeaveYear]=@LeaveYear AND [Category_code]=@emp_status AND [Leave_code]=@Leave_code
+								end	
+							else
+								begin
+									INSERT INTO [LeaveAllocationDtl]
+									([Emp_no]
+									,[Leave_code]
+									,[Category_code]
+									,[LeaveYear]
+									,[LeaveAllocated]
+									,[LeaveUsed])
+									VALUES
+									(@emp_no,@Leave_code,@emp_status,@LeaveYear,@LeaveAllocated,0)
+								end							
+																	
+						end
+					end
+					else
+						begin
+							print('CHECK1')
+							if exists(SELECT [Emp_no] FROM [LeaveAllocationDtl] WHERE [Emp_no]=@emp_no AND [Category_code] = @emp_status AND [LeaveYear] = @LeaveYear AND [Leave_code] = @Leave_code)
+								begin
+									UPDATE  [LeaveAllocationDtl]SET [LeaveAllocated]=@LeaveAllocated WHERE [Emp_no]=@emp_no AND [LeaveYear]=@LeaveYear AND [Category_code]=@emp_status AND [Leave_code]=@Leave_code
+								end	
+							else
+								begin
+									INSERT INTO [LeaveAllocationDtl]
+									([Emp_no]
+									,[Leave_code]
+									,[Category_code]
+									,[LeaveYear]
+									,[LeaveAllocated]
+									,[LeaveUsed])
+									VALUES
+									(@emp_no,@Leave_code,@emp_status,@LeaveYear,@LeaveAllocated,0)
+								end	
+						end		
+				end
+			else if YEAR(@join_date)< @LeaveYear
+				begin
+					set @LeaveAllocated = @Jan
+					if exists(SELECT [Leave_code] FROM [b_leave] WHERE MarriedFemale = 1 AND JobService = 1 AND [Leave_code] = @Leave_code)
+					begin
+						if @sex = 1  --and @marital_status ='Married'
+						begin
+							if exists(SELECT [Emp_no] FROM [LeaveAllocationDtl] WHERE [Emp_no]=@emp_no AND [Category_code] = @emp_status AND [LeaveYear] = @LeaveYear AND [Leave_code] = @Leave_code)
+								begin
+									UPDATE  [LeaveAllocationDtl]SET [LeaveAllocated]=@LeaveAllocated WHERE [Emp_no]=@emp_no AND [LeaveYear]=@LeaveYear AND [Category_code]=@emp_status AND [Leave_code]=@Leave_code
+								end	
+							else
+								begin
+									INSERT INTO [LeaveAllocationDtl]
+									([Emp_no]
+									,[Leave_code]
+									,[Category_code]
+									,[LeaveYear]
+									,[LeaveAllocated]
+									,[LeaveUsed])
+									VALUES
+									(@emp_no,@Leave_code,@emp_status,@LeaveYear,@LeaveAllocated,0)
+								end	
+						end
+					end
+					else
+						begin
+							if exists(SELECT [Emp_no] FROM [LeaveAllocationDtl] WHERE [Emp_no]=@emp_no AND [Category_code] = @emp_status AND [LeaveYear] = @LeaveYear AND [Leave_code] = @Leave_code)
+								begin
+									UPDATE  [LeaveAllocationDtl]SET [LeaveAllocated]=@LeaveAllocated WHERE [Emp_no]=@emp_no AND [LeaveYear]=@LeaveYear AND [Category_code]=@emp_status AND [Leave_code]=@Leave_code
+								end	
+							else
+								begin
+									INSERT INTO [LeaveAllocationDtl]
+									([Emp_no]
+									,[Leave_code]
+									,[Category_code]
+									,[LeaveYear]
+									,[LeaveAllocated]
+									,[LeaveUsed])
+									VALUES
+									(@emp_no,@Leave_code,@emp_status,@LeaveYear,@LeaveAllocated,0)
+								end	
+						end		
+				end
+			
+			fetch next from allocation into @Leave_code, @Jan, @Feb, @Mar, @Apr, @May, @Jun, @Jul, @Aug, @Sep, @Oct, @Nov, @Dec
+		 end
+		 close allocation
+		 deallocate allocation
+	fetch next from employee into @emp_no, @emp_status, @sex, @join_date,@marital_status
+	end
+	close employee
+	deallocate employee
+
+end
+
+
+
+
+----------------------------Line Change / Man power ? Line marge--------------------------------
+
+
+declare @new int = (select section_code from B_section where section_name like 'LINE - 089A') ,@old int =(select section_code from B_section where section_name like 'LINE - 089B')
+
+update emp_basic_info set section_code=@new where section_code=@old;
+update B_section set section_name='Line - 092' where section_code=@new;
+delete b_dep_sec where section_code = @old;
+select * from B_section where section_code=@new
+select * from emp_basic_info where section_code=@old
+select * from b_dep_sec where section_code in (@new,@old)
+
+
+-------------------New section add----------------------------
+
+insert into B_section ( section_code,section_name , section_bangla , op_type ) values ( 2451,'Finishing Staff' ,  'wdwbwks ÷vd' , 2 )  
+select * from B_department where department_name like 'Finishing'
+insert b_dep_sec ( department_code , section_code ) values ( 2 , 2451 )
+
+
+
+----------------------------unit change------------------------
+
+select * from B_branch
+select * from b_company_branch
+select * from emp_basic_info where emp_no = (select emp_no from emp_basic where emp_id='RGL-FIC003')
+update  emp_basic_info set branch_code='36' , emp_unit='AGL-FLOOR 04' where emp_no = (select emp_no from emp_basic where emp_id='RGL-FIC003')
+
+
+----------------------add new Dep Sec------------
+
+insert into B_department ( department_code , department_name , department_bangla , OP_Type ) values 
+( '','','','' );
+insert into B_section ( section_code , section_name , section_bangla , op_type ) values
+(2454, 'Auto Knitting-2' , 'A‡Uv wbwUs -2',2 );
+INSERT INTO b_dep_sec (department_code, section_code) VALUES
+('418', '2454');
+
+
+
+Change FID 
+update emp_basic_info set card_no='29932502' where emp_no = (select emp_no from emp_basic where emp_id = 'ADL364206')
+
+
+
+
+--------------------------------------- card no -----------------------------------
+
+where emp_no = ( select emp_no from emp_basic where emp_id = '",,"' )")
+
+
+
+--------------------------------------- punch transfer device to badge data -----------------
+
+
+INSERT INTO [HTISWLsqlsysdb].[dbo].[Badge_data]
+	([punch_date]
+    ,[card_no]
+    ,[terminal]
+    ,[reader]
+--    ,[user_code]
+)
+
+
+SELECT 
+	dbo.fn_ConvertToDateTime([DEVDT])
+	,'327620'
+	,d.HGDEVID
+	,d.HGDMODE
+--	,100
+
+	FROM [192.168.0.33,4800].[BioStarNew_AC].[dbo].T_LG202402 T INNER JOIN
+	[192.168.0.33,4800].[BioStarNew_AC].[dbo].[T_DEV] D on t.DEVUID=d.DEVID 
+	WHERE T.USRID not in ('UTC+6:00','1') AND EVT IN (4867,4102,4865) and dbo.fn_ConvertToDateTime([DEVDT]) >= dateadd(day,-29,cast(GETDATE() as date)) and t.USRID in ( '327620' )
+	
+
+ EXCEPT ( SELECT
+       B.[punch_date]
+      ,B.[card_no]
+      ,B.[terminal]
+      ,B.[reader]
+--      ,B.[user_code]
+FROM [HTISWLsqlsysdb].[dbo].[Badge_data] B with (nolock) WHERE B.[punch_date]>= dateadd(day,-29,cast(GETDATE() as date)) and b.terminal<>'MA')
+
+
+
+--------------------------------------  Set General Duty day ---------------- force -------
+
+
+
+INSERT INTO empForceWObybranch (branch_code, CurrentHoliday, CurrentHolidayRemarks, AlterHoliday, AlterHolidayRemarks, IsActive, Bholiday)
+SELECT branch_code, '2024-04-26', 'General Duty--', '1900-01-01', 'General Duty--', 1, 1
+FROM B_branch;
+
+
+--------------- Force Week off -----------------------
+
+INSERT INTO empForceWO (emp_no, CurrentHoliday, CurrentHolidayRemarks, AlterHoliday, AlterHolidayRemarks, IsActive)
+SELECT emp_no, '2024-04-26', 'resign&maternitybeforeEidulAdha2024', '1900-01-01', 'maternitybeforeEidulAdha2024', 0
+FROM emp_basic where emp_id in (
+'ADL640828'
+,'ADL177961'
+)
+
+------------------- force General duty ------------------ 
+
+INSERT INTO empForceWO (emp_no, CurrentHoliday, CurrentHolidayRemarks, AlterHoliday, AlterHolidayRemarks, IsActive)
+SELECT emp_no, '2024-03-07', 'eidHolidayAdjustment24RH', '1900-01-01', 'eidHolidayAdjustment24RH', 1
+FROM emp_basic where emp_id in (
+'NCL2-37182'
+)
+
+
+
+
+----------------------------------------- Increment ---------- Temp increment ----------------
+
+
+
+INSERT INTO TempProposedIncrement (EmpID, Name, Designation, ProposedAmount, ProposedDate, Category, IsActive, IsUpdated)
+SELECT * FROM (
+VALUES
+('TSL-SO3490', 'Md. Hezu', 'Junior Operator', 490, '2023-12-01', 'Worker', 1, 0)
+
+
+-- Add more rows as needed
+--('",empId,"', '",name,"', '",Designation,"', ",amount,", '",ProposedDate,"', '",Category,"', 1, 0),
+
+) AS ProposedValues (EmpID, Name, Designation, ProposedAmount, ProposedDate, Category, IsActive, IsUpdated)
+WHERE NOT EXISTS (
+SELECT 1 FROM TempProposedIncrement
+WHERE 
+TempProposedIncrement.EmpID = ProposedValues.EmpID AND 
+TempProposedIncrement.ProposedAmount = ProposedValues.ProposedAmount AND 
+TempProposedIncrement.ProposedDate = ProposedValues.ProposedDate
+);
+
+
+--------- Process Increment --------------
+
+
+--DECLARE @emp_id varchar(20) ,@effect_date date, @increment_amount decimal, @emp_no bigint ,@gl_company_code bigint ,@gl_branch_code bigint,@return_increment_code bigint=0, @isactive bit=0;
+
+--DECLARE emp_cursor CURSOR FOR
+
+--SELECT EmpID,ProposedDate,ProposedAmount, IsActive
+--FROM TempProposedIncrement
+--WHERE IsActive=1 AND IsUpdated=0 --and ProposedDate between DATEADD(DAY, 1, EOMONTH(GETDATE(), -1)) and dateadd(mm,0,EOMONTH(GETDATE()))
+--order by ProposedDate;
+
+--OPEN emp_cursor
+
+--FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+--WHILE @@FETCH_STATUS = 0
+--BEGIN
+--SELECT @emp_no=BI.emp_no,@gl_company_code=BI.company_code,@gl_branch_code=BI.branch_code
+--FROM emp_basic B INNER JOIN emp_basic_info BI ON B.emp_no=BI.emp_no WHERE B.emp_id=@emp_id
+
+--EXEC [192.168.0.13,4368].[sqlsysdb].[dbo].[Update_increment] @emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0,@return_increment_code OUTPUT
+
+--IF (@return_increment_code > 0 )
+--BEGIN
+--EXEC [dbo].[Update_increment] @return_increment_code,@emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0
+--UPDATE TempProposedIncrement SET IsUpdated=1 WHERE EmpID=@emp_id
+--END
+
+--FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+--END
+--CLOSE emp_cursor;
+--DEALLOCATE emp_cursor;
+
+
+
+------- lunch time 1.30 for apparel 
+
+
+			-- ::: code added by rakibul ::: -----------------
+			-- friday shift changes 2024
+			IF @work_date='2024-04-26' AND @shift_code = 4 -- no clue
+			BEGIN
+				--SELECT @shift_in,@shift_late,@shift_early,@shift_out,@tiffin_time,'Before'
+				SET @shift_in=DATEADD(HOUR,1,@shift_in) 
+				SET @shift_late =DATEADD(MINUTE,5,(DATEADD(HOUR,1,@shift_late)))
+				SET @shift_early =DATEADD(HOUR,1,@shift_early)
+				SET @shift_out =DATEADD(HOUR,1.5,@shift_out)
+				SET @tiffin_time =DATEADD(HOUR,1,@tiffin_time)
+				--SELECT @shift_in,@shift_late,@shift_early,@shift_out,@tiffin_time,'After'
+			END
+
+			-- ::: added code end here ::: -------------------	
+
+
+
+---------------------------- LOG Delete ---------------
+
+
+DECLARE DBCursor CURSOR FOR
+SELECT name FROM sys.sysdatabases WHERE name NOT IN ('master','tempdb','model','msdb')
+
+DECLARE @DBName VARCHAR(200)
+
+OPEN DBCursor
+FETCH NEXT FROM DBCursor INTO @DBName
+
+WHILE @@FETCH_STATUS=0
+BEGIN
+	DECLARE @LogFile VARCHAR(200)=(SELECT name AS [LogicalName] FROM sys.master_files WHERE database_id = DB_ID(@DBName) AND type_desc = 'LOG')
+
+	DECLARE @SQL VARCHAR(MAX)='
+	USE '+@DBName+';
+	ALTER DATABASE '+@DBName+' SET RECOVERY SIMPLE;
+	DBCC SHRINKFILE ('+@LogFile+', 0);
+	ALTER DATABASE '+@DBName+' SET RECOVERY FULL;
+	'
+
+	EXEC(@SQL)
+
+	FETCH NEXT FROM DBCursor INTO @DBName
+END
+CLOSE DBCursor
+DEALLOCATE DBCursor
+
+-------------------------------
+
+
+
+
+
+

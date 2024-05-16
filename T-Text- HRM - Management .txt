@@ -1,0 +1,513 @@
+Diciplinary Action :
+
+DB-> Stored Procedures -> Pro_ProcessLeaveAllocation
+Uncomment "declare" section
+Comment "Alter" section
+Add 29
+Uncomment Last Line
+
+Holiday Add :
+
+DB-> B_Holiday_PaymentMode 
+Normal = 1
+Festive = 2
+
+Leave Allocation :
+
+HRM -> Application -> Leave Allocation -> Search Id -> Select -> Process
+
+WeekOff: 
+
+WO -> empForceWO / bybranch -> Get id form emp_Basic -> add field
+If WO -> 0, If Remove WO -> 1
+
+
+Attendance Process Stop:
+
+SP -> ServiceProcessQueue -> Uncomment STOP ATTENDACE PROCESS -> Comment Underneath
+SP -> ServiceProcessQueueAttendance -> Uncomment STOP ATTENDACE PROCESS
+SP -> sp_Attendance_Process_Start -> Uncomment Attendance Proccess lock Section
+
+
+EL/Final Settlement :
+
+LeaveAllocation->Delete years before 2022 -> Set LeaveEarned = 0->
+Set Current Year LeaveAllocated,Carried Days = Leave Balance from Sheet->Set LeaveUsed from sheet -> Proccess Final Settlement -> Set FinalSattlementPayable.PrintQty = 0
+
+
+Warehouse:
+
+Warehouse -> sp -> SP_GetReceivedReportData_r -> Delete -> Create
+
+
+Maternity Payment Possible Problems:
+
+1. Nominee not added
+2. Proccess
+
+
+Shift Details:
+
+InTime -> OutTime = 9 Hr,
+Break 1 Hr,
+Lunch 1 Hr,
+Tiffin = OutTime+2.5 Hr
+
+
+Roster Details:
+
+Roster -> InTime -> OutTime = 8 Hr 
+Break 8 Hr,
+
+
+.......................
+
+
+OT Adjustment Query :
+
+* Change Date yyyy-mm-dd and OT Format First -> Then Copy Paste -> Then run Query Carefully
+
+--update emp_Attendance_OTAdjustment set Emp_no=e.emp_no From emp_Attendance_OTAdjustment a INNER JOIN emp_basic e On a.Emp_id=e.emp_id where  Remarks='TML0762HOTD'
+
+Select* From emp_Attendance_OTAdjustment where Remarks='TML0762HOTD'
+
+For Checking ID
+
+--Select a.* From emp_Attendance_OTAdjustment a INNER JOIN emp_basic e On a.Emp_id=e.emp_id where a.emp_id='CCL-20214'
+
+--For CoreErp--
+
+--update Attendance_OTAdjustment set EmpId=e.EmpID From Attendance_OTAdjustment a INNER JOIN HumanResource_EmployeeBasic e On a.EmpCode=e.EmpCode where  Remarks='TML0762HOTD'
+
+Select * From Attendance_OTAdjustment where Remarks='TML0762HOTD'
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+Remove Advance Query : CoreERP
+
+Select *  From Payroll_MonthlySalaryAdvance where EmpId IN (Select EmpId From HumanResource_EmployeeBasic where EmpCode IN (053354))
+
+--Delete From Payroll_MonthlySalaryAdvance where EmpId=171721
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Increment Query : TempProposedIncrement
+
+
+
+DECLARE @emp_id varchar(20) ,@effect_date date, @increment_amount decimal, @emp_no bigint ,@gl_company_code bigint ,@gl_branch_code bigint,@return_increment_code bigint=0, @isactive bit=0;
+
+
+DECLARE emp_cursor CURSOR FOR
+
+
+SELECT EmpID,ProposedDate,ProposedAmount, IsActive
+FROM TempProposedIncrement
+WHERE IsActive=1 AND IsUpdated=0 --and ProposedDate between DATEADD(DAY, 1, EOMONTH(GETDATE(), -1)) and dateadd(mm,0,EOMONTH(GETDATE()))
+order by ProposedDate;
+
+OPEN emp_cursor
+
+FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+SELECT @emp_no=BI.emp_no,@gl_company_code=BI.company_code,@gl_branch_code=BI.branch_code
+FROM emp_basic B INNER JOIN emp_basic_info BI ON B.emp_no=BI.emp_no WHERE B.emp_id=@emp_id
+
+EXEC [192.168.0.13,4368].[sqlsysdb].[dbo].[Update_increment] @emp_no,@effect_date,@increment_amount,'Nov 2023',100,@gl_company_code,@gl_branch_code,0,@return_increment_code OUTPUT
+
+IF (@return_increment_code > 0 )
+BEGIN
+EXEC [dbo].[Update_increment] @return_increment_code,@emp_no,@effect_date,@increment_amount,'Nov 2023',100,@gl_company_code,@gl_branch_code,0
+UPDATE TempProposedIncrement SET IsUpdated=1 WHERE EmpID=@emp_id
+END
+
+FETCH NEXT FROM emp_cursor INTO @emp_id,@effect_date,@increment_amount, @isactive
+
+END
+CLOSE emp_cursor;
+DEALLOCATE emp_cursor;
+
+------------------------------------------------------------Final Settlement---------------------------------------------------------
+
+
+
+
+declare @empCode varchar(50) ,@empId varchar(50),@leaveUsed float,@leaveAll float, @UnitId int, @WorkingDay int, @SeparationEffectDate date
+
+set @empCode = '008737'
+set @leaveAll = 2.28
+set @leaveUsed = 7
+
+select @empId = EmpID, @UnitId = UnitID from HumanResource_EmployeeBasic where EmpCode=@empCode
+
+update LeaveAllocation
+set LeaveEarned=0,
+LeaveAllocated=@leaveAll,
+LeaveUsed=@leaveUsed,
+CarriedDays=@leaveAll
+where EmpId = @empId and LeaveId=3 AND LeaveYear= 2023
+
+set @SeparationEffectDate = (select EffectDate from HumanResource_EmployeeSeparation where EmpID=@empId)
+
+if @SeparationEffectDate is null begin raiserror('Leave Allocation Set, But Id Not in Separation',16,1) return end
+
+IF @UnitId IN (2,3,4,5,6,20,34,43)
+	BEGIN
+		SET @WorkingDay=(SELECT COUNT (*) FROM Attendance_DailyAttendance WHERE YEAR(WorkDay)=YEAR(@SeparationEffectDate) 
+			AND EmpID=@EmpId AND AttStatus IN ('P','LT','LTP','SD','TL','EE','NOP','EXL')) + (SELECT WorkDays FROM Attendance_MigratedEmployee WHERE EmpID=@EmpID)
+	END
+	ELSE
+	BEGIN
+		SET @WorkingDay=(SELECT COUNT (*) FROM Attendance_DailyAttendance WHERE YEAR(WorkDay)=YEAR(@SeparationEffectDate) AND EmpID=@EmpId AND AttStatus IN ('P','LT','LTP','SD','TL','EE','NOP','EXL'))
+	END
+
+exec ProcessFinalSettelment @EmpID=@empId,@p_UserId=1
+select * from LeaveAllocation where EmpId = @empId and LeaveId=3 and LeaveYear between 2022 and YEAR(GETDATE())
+select @WorkingDay WorkingDay, @WorkingDay/18.00 RunningEl
+SELECT * FROM FinalSattlementPayable WHERE EmpID=@empId
+UPDATE FinalSattlementPayable SET PrintQty = 0 WHERE EmpID=@empId
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------------
+Approver Setup
+
+insert into Ogranogram_ApplicationsApproval
+select dbo.REmpId('071203'), dbo.REmpId('000332'), GETDATE(), null, 1, 1, GETDATE(), null, 1, 1
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Leave Type Change:
+
+select * from Attendance_LeaveRegister where EmpId=dbo.REmpId('008556') and StartDate='2023-12-19'
+--update Attendance_LeaveRegister set LeaveId=3 where EmpId=dbo.REmpId('008556') and StartDate='2023-12-19'
+--update LeaveAllocation set LeaveUsed=LeaveUsed-.5 where EmpId=dbo.REmpId('008556') and LeaveYear=2023 and LeaveId=2
+--update LeaveAllocation set LeaveUsed=LeaveUsed+.5 where EmpId=dbo.REmpId('008556') and LeaveYear=2023 and LeaveId=3
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+MenuPermission:
+
+INSERT INTO ERPUSERDB.dbo.MenuPermission (UserId, MenuId, EntryDate)
+
+select *, getdate() from 
+(
+Select (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='067241') as UserId, MenuId as MenuId 
+from ERPUSERDB.dbo.MenuPermission Where UserId = (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='040052')
+except select UserId, MenuId from ERPUSERDB.dbo.MenuPermission
+) as NewMenu
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+UserUnitPermission:
+
+--INSERT INTO UserUnitPermission (UserId, CompanyId, UnitId, IsActive, IsDeleted)
+
+select * --, getdate()
+from 
+(
+Select (select UserId from vw_EmployeeInfo where EmpCode='067241') as UserId,CompanyId as CompanyId, UnitId as UnitId, 1 as IsActive, 0 as IsDeleted
+from UserUnitPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='027893')
+except select UserId, CompanyId, UnitId, IsActive, IsDeleted from UserUnitPermission
+) as NewUnit
+
+
+-------------------------------------------------UserCompanyPermission-------------------------------------------------------------
+
+
+
+--INSERT INTO UserCompanyPermission (UserId, CompanyId, IsActive, IsDeleted)
+
+select * --, getdate()
+from 
+(
+Select (select UserId from vw_EmployeeInfo where EmpCode='006858') as UserId,CompanyId as CompanyId, 1 as IsActive, 0 as IsDeleted
+from UserCompanyPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='010251')
+except select UserId, CompanyId, IsActive, IsDeleted from UserCompanyPermission
+) as NewCompany
+
+
+
+
+-----------------------------------------------------------Reset Password-------------------------------------------------------------------
+
+
+
+update ERPUSERDB.dbo.UserInfo set UsrPass='tSEbD4VuMps=' where EmpId='011078'
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Active HRM:
+
+
+select * from ERPUSERDB.dbo.UserInfo where EmpId in ('056712')
+--update ERPUSERDB.dbo.UserInfo set HRMIS_User=1 where EmpId in ('058232')
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Apparel Card No change : 
+
+select * from emp_basic_info where emp_no=(select emp_no from emp_basic where emp_id='TSL-4B-014631')
+
+--select * from update emp_basic_info set card_no='515969' where emp_no=(select emp_no from emp_basic where emp_id='TSL-4B-014631')
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Punch Alter : 
+
+insert into Attendance_DailyPunchRecord2024(PunchNo,PunchTime,DeviceNo,DoorMode)
+select PunchNo,PunchTime,DeviceNo,DoorMode from Attendance_DailyPunchRecord2023 where PunchNo='10248' and cast(PunchTime as date) = '2023-12-29'
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+--WITH cte AS (SELECT EmpId,Amount,SalaryMonth,SalaryYear, ROW_NUMBER() OVER (PARTITION BY EmpId,Amount,SalaryMonth,SalaryYear ORDER BY EmpId) rownum 
+--                                FROM Payroll_EmployeePayrollAdjustment A WHERE SalaryMonth=8 AND SalaryYear=2023 AND EmpId IN (SELECT EmpId FROM HumanResource_EmployeeBasic WHERE UnitID=3))
+--DELETE FROM cte WHERE rownum>1
+
+
+
+'mailto:touhedhr@hameemgroup.com
+---------------------------------------------------------Stop All Jobs-------------------------------------------
+
+
+USE msdb;
+GO
+
+-- Stop Multiple running SQL Jobs at once:
+DECLARE @dynSql NVARCHAR(MAX) = ''
+
+SELECT @dynSql += N' msdb.dbo.sp_stop_job @job_name = ''' + j.name + N'''' 
+			+ CHAR(10) + CHAR(13)
+FROM msdb.dbo.sysjobs j
+JOIN msdb.dbo.sysjobactivity AS ja 
+ON ja.job_id = j.job_id
+WHERE ja.start_execution_date IS NOT NULL
+AND ja.stop_execution_date IS NULL
+ORDER BY j.name;
+
+PRINT @dynSql;
+GO
+
+
+--------------------------------------------------DB Index Stats And Maintenance-------------------------------------------
+
+SELECT dbschemas.[name] as 'Schema',
+dbtables.[name] as 'Table',
+dbindexes.[name] as 'Index',
+indexstats.avg_fragmentation_in_percent,
+indexstats.page_count
+FROM sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, NULL) AS indexstats
+INNER JOIN sys.tables dbtables on dbtables.[object_id] = indexstats.[object_id]
+INNER JOIN sys.schemas dbschemas on dbtables.[schema_id] = dbschemas.[schema_id]
+INNER JOIN sys.indexes AS dbindexes ON dbindexes.[object_id] = indexstats.[object_id]
+AND indexstats.index_id = dbindexes.index_id
+WHERE indexstats.database_id = DB_ID() AND dbtables.[name] like '%%'
+ORDER BY indexstats.avg_fragmentation_in_percent desc
+
+--sp_MSforeachdb 'use [?]; exec sp_updatestats'
+
+--Exec sp_msforeachtable 'SET QUOTED_IDENTIFIER ON; ALTER INDEX ALL ON ? REBUILD'
+--GO
+
+
+--UPDATE STATISTICS dbo.Attendance_DailyAttendance WITH FULLSCAN;
+
+--ALTER INDEX ALL ON dbo.Attendance_DailyAttendance REBUILD
+
+---------------------------------------------------------------Insert Punch-------------------------------------------
+
+insert into Attendance_DailyPunchRecord2023 (PunchNo, PunchTime, DeviceNo, DoorMode) values ('22834', '2023-09-15 00:52:01', '8068', 1)
+
+-----------------------------------------------------------------WorkDays Migration-----------------------------------
+insert into  [192.168.0.13,4368].[CoreERP].[dbo].[Attendance_MigratedEmployee] (EmpId, WorkDays) 
+
+select EmpId, COUNT(org_att_status) WorkDays from 
+(
+select
+heb.EmpId,
+eat.org_att_status
+from
+emp_Attendance eat
+inner join emp_basic eb on eat.EMP_NO=eb.emp_no
+inner join [192.168.0.13,4368].[CoreERP].[dbo].[HumanResource_EmployeeBasic] heb on eb.emp_id=heb.PrevEmpID and  heb.UnitId in (2,3,4,5,6,20,34,43)
+where 
+YEAR(eat.Work_date) = 2023 and MONTH(eat.Work_date) <= 7 
+and eat.org_att_status in ('P','LT','LTP','SD','TL','EE','NOP','EXL')
+) as att
+group by EmpId
+
+.....................................
+
+------------------------------ holiday setup ---------------------------------
+SELECT * FROM Common_Department WHERE DepartmentName LIKE '%Security & Surveillance%'
+
+SELECT * FROM Common_Unit WHERE UnitName LIKE '%CGL%'
+
+SELECT * FROM Holidays WHERE HolidayId=1098
+
+
+SELECT * FROM HolidayAllocateEmployeeWise
+
+INSERT INTO HolidayAllocateEmployeeWise
+SELECT 1098, EmpID, GETDATE(), 1 FROM HumanResource_EmployeeBasic WHERE UnitID IN (65) AND DepartmentID IN (10) AND IsApproved=1 AND EmpStatusID=1
+AND EmpCode NOT IN (
+'007179',
+'007183'
+)
+
+
+INSERT INTO HolidayAllocateEmployeeWise
+SELECT 1098, EmpID, GETDATE(), 1 FROM HumanResource_EmployeeBasic WHERE UnitID IN (65) AND DepartmentID IN (10) AND IsApproved=1 AND EmpStatusID=1
+AND EmpCode  = '062841'
+
+------------------------------------- Transfer employee ------------------------
+
+
+INSERT INTO [CoreERP].[dbo].[Employee_TransferInfo]
+(EffectDate, EmpID, UnitId, DepartmentId, SectionId, WingId, TeamId, JobLocationId, Note, EntryDate, UserId, TerminalId, IsLocked)
+VALUES
+('2024-03-01', '",,"', '",,"', '",,"', '",,"', '",,"','', NULL, 'ARH', GETDATE(),1, 'ADCAPP', 0);
+
+
+
+
+------------------- Force WeekOff HRM ----------------------------
+--insert into Attendance_GeneralDuty ( EmpID , WorkDay , OWo , OMood , CWo , CMood , TWo , TMood , Remarks , EntryDate , EntryUserId )
+--select EmpID ,'2024-03-08',1,0,1,0,1,0,'EidHolidayAdjustment--', GETDATE(),1  
+--from HumanResource_EmployeeBasic where EmpCode='#####' 
+
+
+------------------- Force General duty HRM --------------------------------
+
+--insert into Attendance_GeneralDuty ( EmpID , WorkDay , OWo , OMood , CWo , CMood , TWo , TMood , Remarks , EntryDate , EntryUserId )
+select EmpID ,'2024-03-08',0,1,1,0,0,1,'EidHolidayAdjustment--', GETDATE(),1  
+from HumanResource_EmployeeBasic where EmpCode='#####' 
+
+
+
+-----------------------  Allawance setup employeewise -----------------------
+
+
+
+MERGE INTO Payroll_EmployeeWiseAllowance AS target
+USING (
+    VALUES
+        (dbo.REmpId('",empId,"'), '",costheadId,"', '",effectDate,"', FLOOR('",allowanceRate,"'), 1, 'SERVER_', GETDATE())
+
+
+) AS source (EmpId , CostHeadId , EffectiveDate , AllowanceRate , EntryUserId , TerminalId , EntryDate )
+ON target.EmpId = source.EmpId AND target.CostHeadId = source.CostHeadId
+WHEN MATCHED THEN
+    UPDATE SET 
+        target.EmpId = source.EmpId,
+        target.CostHeadId = source.CostHeadId,
+        target.EffectiveDate = source.EffectiveDate,
+        target.AllowanceRate = source.AllowanceRate,
+        target.EntryUserId = source.EntryUserId,
+		target.TerminalId = source.TerminalId,
+        target.EntryDate = source.EntryDate
+
+WHEN NOT MATCHED THEN
+    INSERT (EmpId , CostHeadId , EffectiveDate , AllowanceRate , EntryUserId , TerminalId , EntryDate )
+    VALUES (source.EmpId, source.CostHeadId, source.EffectiveDate, source.AllowanceRate, source.EntryUserId, source.TerminalId, source.EntryDate);
+
+
+---------------- HRM - OT Adjustment ---------------------------
+
+--select * from Attendance_OTAdjustment where EmpId=dbo.REmpId('043143')
+
+--select * from Attendance_OTAdjustment where Remarks='CCL 1B OT hours Adjustment--' --EmpId=dbo.REmpId('043923')
+
+--select * from Attendance_OTAdjustment where AdjustmentToTime Remarks='CCL  OT hours Adjustment--rh'
+
+--
+insert into Attendance_OTAdjustment ( EmpCode , EmpId , WorkDate , AdjustmentTo ,AdjustmentToTime, OTHour , Remarks )
+select EmpCode , EmpId ,'",WorkDate,"' , '2024-04-08', '",othours,"','CCL 2 hours Adjustment--' from HumanResource_EmployeeBasic where EmpCode='",,"' union all
+
+--
+=CONCATENATE("select EmpCode , EmpId ,'",workdate,"' , '2024-04-08','30', '",OThours,"','CCL 1A hours Adjustment--kamal' from HumanResource_EmployeeBasic AS HREB where EmpCode='",empCode,"'  AND NOT EXISTS (
+    SELECT 1
+    FROM Attendance_OTAdjustment AS AO
+    WHERE AO.EmpCode = HREB.EmpCode
+    AND AO.WorkDate = '",workdate,"'
+)
+UNION ALL")
+
+----------------------------- Punch Transfer  --------------------------------------
+
+select * from Attendance_DailyPunchRecord2024 where PunchNo='79093' and PunchTime between '2024-04-27' and '2024-04-30'
+
+--update Attendance_DailyPunchRecord2024 set Remarks='transfer to 079093 (right ID)' , InActive=1 
+where PunchNo='79003' and PunchTime between '2024-04-27' and '2024-04-30'
+
+
+
+--insert into Attendance_DailyPunchRecord2024 ( PunchNo , PunchTime , DeviceNo, DoorMode , UserID , ActionTime , InActive , Remarks )
+select '79093' ,PunchTime , DeviceNo, DoorMode , UserID , ActionTime , InActive , 'transfer from 79003 (wrong ID)' 
+from  Attendance_DailyPunchRecord2024 where PunchNo='79003' and PunchTime between '2024-04-27' and '2024-04-30'
+
+------------------------------------ Tranfer Designation from sysDB to HRM -------------------------------
+
+DECLARE 
+@designation VARCHAR(50) = 'Button Section Assistant Operator', 
+@newDesignationBan VARCHAR(50),
+@newDesignation VARCHAR(50) = 'Assistant Operator', 
+@designationGName VARCHAR(50) = 'Operator' ,-- Officer
+@newDesignationIdFromHRM VARCHAR(50)
+
+SELECT @newDesignationBan = designation_bangla FROM sqlsysdb.dbo.b_designation WHERE designation_name = @designation
+
+SELECT * FROM Common_Designation WHERE DesignationName = @newDesignation
+
+--INSERT INTO Common_Designation ( DesignationName ,DesignationNameBan , DesGroupID , GradeId , OrderBy , IsActive , IsDelete  )
+SELECT @newDesignation,@newDesignationBan , (SELECT DesGroupID FROM Common_DesignationGroup WHERE DesGroupName=@designationGName) ,0,99,1,0
+
+SELECT @newDesignationIdFromHRM = DesignationID FROM Common_Designation WHERE DesignationName=@newDesignation
+
+UPDATE sqlsysdb.dbo.b_designation SET NewTableCodeId=@newDesignationIdFromHRM WHERE designation_name = @designation
+
+SELECT  * FROM sqlsysdb.dbo.b_designation WHERE designation_name = @designation
+
+-------------------------------------------------------------------------------
+
+
+Muktadir ewdl-024951
+jesmin ccl/nishat -010461
+mofij hdl=029220
+asraful cwdl-4=020378
+tamzid swdl-017143
+zahid rppil=011023 
+mohidullah cwdl-1=018401
+ahsan Habib=027983
+mehedi becl=010488
+akram cgl = 013765
+shahriaz =022271 
+Solayman=052174
+rubel cwdl-unit-3=018462
+Sazol mccl- 003443
+Safatuzzaman Mawna -053149
+Sumon Rana - 011086
+Saiful CWDL2- 018271
+Md Tamzit CCL-02 - 053401
+Kamal CCL-01a -013628
+Kaium - CCL-4 -045127
+Munia CH24- 012612
+Arifa Sultana -  013634 
+Sumaiya - 011078 
+TAIFUR - 008540
+Zahid - RPPIL -> 011023
+Masud Rana - Central/Bond -> 014543
+Munia Apu CH24 - 1624
+Sumon Tangail EGL - 011086
+Younus Ali HTL - 054157
+Sanoar Sunny - 062320
+Asraful - 020378

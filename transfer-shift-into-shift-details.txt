@@ -1,0 +1,91 @@
+-- =============================================
+-- Author: <Author,,Rakibul Hasan>
+-- Create date: <Create Date,,26 Nov 2023>
+-- Description:	<Description,, Add Shift details from shift table >
+-- =============================================
+
+insert into Common_Shift_Dtl (
+ShiftID,
+UnitId,
+HRMModeId,
+EffectDate,
+ShiftIn,
+ShiftLate,
+ShiftAbsent,
+ShiftEarly,
+ShiftOut,
+ShiftLastPunch,
+ShiftLunchFrom,
+ShiftLunchTill,
+IsLunchPaid,
+ShiftIfterFrom,
+ShiftIfterTill,
+IsIfterPaid,
+NightBreakFrom,
+NightBreakTill,
+IsNightPaid,
+SheriBreakFrom,
+SheriBreakTill,
+IsSheriPaid,
+IsLunch,
+IsTiffin,
+TiffinTime,
+IsIfter,
+IfterTime,
+IsNight,
+NightTime,
+IsNightIncentive,
+NightIncentiveTime,
+ShiftType,
+ParentShiftID,
+ChangeOverShiftID,
+EXL,
+NOP,
+EE,
+ShiftShort,
+EntryDate,
+EntryUserId
+)
+
+select 
+ShiftID,
+17,
+1,
+'2023-11-01',
+ShiftIn,
+ShiftLate,
+ShiftAbsent,
+ShiftEarly,
+ShiftOut,
+ShiftLastPunch,
+ShiftLunchFrom,
+ShiftLunchTill,
+IsLunchPaid,
+ShiftIfterFrom, 
+ShiftIfterTill,
+IsIfterPaid,
+NightBreakFrom,
+NightBreakTill,
+IsNightPaid,
+SheriBreakFrom,
+SheriBreakTill,
+IsSheriPaid,
+IsLunch,
+IsTiffin,
+TiffinTime,
+IsIfter,
+IfterTime,
+IsNight,
+NightTime,
+NULL, -- night incentive
+NULL, -- night incentive time
+ShiftType,
+106, -- parent shift ID
+ChangeOverShiftID,
+EXL,
+NOP,
+EE,
+NULL, --shift short
+GETDATE(), -- entry date
+NULL -- entry user
+from Common_Shift where ShiftID=116

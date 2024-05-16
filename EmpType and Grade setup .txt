@@ -1,0 +1,333 @@
+-- Employee Type Change
+
+update HumanResource_EmployeeBasic set EmpTypeID='2' 
+where EmpCode in 
+(046280
+,046503
+,046611
+,046948)
+
+--------------
+
+grade change 
+
+
+CREATE TABLE #GradeTableUpdate(
+	EmpCode VARCHAR(100),
+	DesignationId VARCHAR(100),
+	GradeId VARCHAR(100)
+)
+
+INSERT INTO #GradeTableUpdate
+
+--select '",,"','",,"','",,"' union all
+
+
+DECLARE @EmpCode varchar(6)
+DECLARE @EmpID INT
+DECLARE @GradeId VARCHAR(255)
+DECLARE @UnitTypeId VARCHAR(255)
+DECLARE @DesignationId VARCHAR(255)
+
+
+DECLARE EmpCursor CURSOR FOR
+SELECT EmpCode FROM  #GradeTableUpdate
+
+OPEN EmpCursor
+FETCH NEXT FROM EmpCursor INTO @EmpCode
+
+WHILE @@FETCH_STATUS=0
+BEGIN
+
+---- Set values for the variables
+
+SELECT 
+	@EmpID=b.EmpID,
+	@DesignationId=a.DesignationId,
+	@GradeId=a.GradeId,
+	@UnitTypeId=c.UnitTypeId
+FROM #GradeTableUpdate a
+INNER JOIN HumanResource_EmployeeBasic b on a.EmpCode=b.EmpCode
+INNER JOIN Common_Unit c on b.UnitID=c.UnitId
+WHERE a.EmpCode=@EmpCode
+
+-- Update statements using variables
+
+UPDATE HumanResource_EmployeeBasic
+SET DesignationID = @DesignationId, PositionID =  @GradeId
+WHERE EmpID = @EmpID;
+
+--UPDATE Common_Designation
+--SET GradeId =  @GradeId
+--WHERE DesignationID = (SELECT DesignationID FROM HumanResource_EmployeeBasic WHERE EmpID = @EmpID);
+
+IF EXISTS (SELECT * FROM Common_DesignationGrade WHERE DesignationID=@DesignationId AND UnitTypeId=@UnitTypeId)
+BEGIN 
+
+	--SELECT @EmpCode,@UnitTypeId,@GradeId
+	UPDATE Common_DesignationGrade
+	SET GradeId =  @GradeId
+	WHERE DesignationID = @DesignationId
+	AND UnitTypeId = @UnitTypeId;
+
+END
+ELSE
+BEGIN
+	INSERT INTO Common_DesignationGrade
+	SELECT @DesignationId,@UnitTypeId,@GradeId
+END
+
+
+FETCH NEXT FROM EmpCursor INTO @EmpCode
+END
+CLOSE EmpCursor
+DEALLOCATE EmpCursor
+
+
+DROP TABLE #GradeTableUpdate
+
+
+
+
+----------------------------   Force input punch for CCL --------------
+
+
+
+--INSERT INTO [192.168.0.13,4368].[CoreERP].[dbo].[Attendance_DailyPunchRecord2023] (PunchNo, PunchTime, DeviceNo, DoorMode)
+SELECT
+  cheb.PunchNo AS PunchNo,
+  [HCCLsqlsysdb].dbo.fn_ConvertToDateTime([DEVDT]) AS PunchTime,
+  CONCAT('6000', d.HGDEVID) AS DeviceNo,
+  d.HGDMODE AS DoorMode
+FROM [BioStar_AC].[dbo].[T_LG202403] T
+INNER JOIN BioStar_AC.dbo.T_DEV D on T.DEVUID=d.DEVID
+INNER JOIN [192.168.0.13,4368].[CoreERP].[dbo].[humanresource_employeebasic] cheb WITH (NOLOCK) 
+  ON 
+  (
+  CASE
+    WHEN cheb.PrevPunchNo IS NULL THEN cheb.PunchNo
+    ELSE cheb.PrevPunchNo
+  END
+  ) = T.USRID 
+  AND cheb.UnitID IN (2, 3, 4, 5, 6,20, 34, 43)
+WHERE T.USRID not in ('UTC+6:00','1') AND EVT IN (4867,4102,4865) AND d.HGDEVID IS NOT NULL and t.USRID = '46385'
+AND [HCCLsqlsysdb].dbo.fn_ConvertToDateTime([DEVDT]) BETWEEN '2024-03-01' AND GETDATE() 
+
+EXCEPT
+SELECT
+  PunchNo,
+  PunchTime,
+  DeviceNo,
+  DoorMode
+FROM [192.168.0.13,4368].[CoreERP].[dbo].[attendance_dailypunchrecord2023] WITH (NOLOCK)
+WHERE PunchTime BETWEEN '2024-03-01' AND GETDATE()
+AND DeviceNo <> 'MA'
+
+
+-------------------- MTL Salary process --------
+
+procedure name : ProcessPayrollMaternityPay
+
+
+---------------- Annual Leave ------------
+
+
+declare @empCode varchar(50) ,@empId varchar(50),@leaveUsed float,@leaveAll float, @UnitId int, @WorkingDay int, @SeparationEffectDate date
+
+set @empCode = '042317'
+set @leaveAll = 13.72
+set @leaveUsed = 0
+
+select @empId = EmpID, @UnitId = UnitID from HumanResource_EmployeeBasic where EmpCode=@empCode
+
+update LeaveAllocation
+set LeaveEarned=0,
+LeaveAllocated=@leaveAll,
+LeaveUsed=@leaveUsed,
+CarriedDays=@leaveAll
+where EmpId = @empId and LeaveId=3 AND LeaveYear= 2024
+
+
+
+
+---------------- EL Deductions -------------------------
+
+--=CONCATENATE("select 3, dbo.REmpId('044701'), 4, 2023, 0, '",,"', 1, 1, 'EL Deduction For EID UL Fitar 2023 By T', GETDATE() union all")
+--=CONCATENATE("update LeaveAllocation set LeaveUsed=LeaveUsed+'",,"' where EmpId=dbo.REmpId('014393') and LeaveId=3 and LeaveYear=2023")
+--=CONCATENATE("select 3, dbo.REmpId('044701'), 7, 2023, 0, '",,"', 1, 1, 'EL Deduction For EID UL Adha 2023 By T', GETDATE() union all")
+
+
+insert into LeaveDeduction(LeaveID,EmpID,DMonth,DYear,LateDays,DLeave,IsElPaid,DTypeId,Remarks,EntryDate)
+=CONCATENATE("select 3, dbo.REmpId('",B5,"'), 7, 2023, 0, '",K5,"', 1, 1, 'EL Deduction For EID', GETDATE() union all")
+=CONCATENATE("update LeaveAllocation set LeaveUsed=LeaveUsed+'",K5,"' where EmpId=dbo.REmpId('",B5,"') and LeaveId=3 and LeaveYear=2023")
+
+--- single up -------
+insert into LeaveDeduction(LeaveID,EmpID,DMonth,DYear,LateDays,DLeave,IsElPaid,DTypeId,Remarks,EntryDate)
+select 3, dbo.REmpId('028397'), 7, 2023, 0, '6', 1, 1, 'EL Deduction For EID', GETDATE();
+update LeaveAllocation set LeaveUsed=LeaveUsed+'6' where EmpId=dbo.REmpId('028397') and LeaveId=3 and LeaveYear=2023
+
+
+-- EL Force adjustment
+
+update emp_AnnualLeaveAllowance set AvailedEarnLeave='3' , BalanceLeave=ErnLeaveDue-AvailedEarnLeave , NetPay=PerDayAmount*BalanceLeave where Emp_no = ( select Emp_no from emp_basic where emp_id='SG0261' ) and earn_year=2023
+
+
+-- EL Adjustment -- ALl Calculation 
+
+select 
+a.EmpCode,
+(select SUM(NoOfDays) from Attendance_LeaveRegister where EmpId=a.EmpId and year(StartDate)=2023 and LeaveId=3 and IsDeleted=0) LeaveRegister,
+(select SUM(DLeave) from LeaveDeduction where EmpId=a.EmpId and DYear=2023) LeaveDeduction,
+(select PayableDay from Payroll_AnnualLeave_Payment where PayYear=2023 and EmpId=a.EmpID) PaidLeave
+from HumanResource_EmployeeBasic a
+where a.EmpCode='027980'
+
+update a 
+set a.LeaveUsed=
+isnull((select SUM(NoOfDays) from Attendance_LeaveRegister where EmpId=a.EmpId and year(StartDate)=2023 and LeaveId=3 and IsDeleted=0),0) +
+isnull((select SUM(DLeave) from LeaveDeduction where EmpId=a.EmpId and DYear=2023),0) +
+isnull((select PayableDay from Payroll_AnnualLeave_Payment where PayYear=2023 and EmpId=a.EmpID),0)
+from LeaveAllocation a
+inner join HumanResource_EmployeeBasic b on a.EmpId=b.EmpID
+where b.EmpCode='027965'
+and a.LeaveYear=2023 and a.LeaveId=3
+
+
+
+
+--------------- Menu Permission ------------------
+
+INSERT INTO ERPUSERDB.dbo.MenuPermission (UserId, MenuId, EntryDate)
+
+select *, getdate() from 
+(
+Select (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='063155') as UserId, MenuId as MenuId 
+from ERPUSERDB.dbo.MenuPermission Where UserId = (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='020975')
+except select UserId, MenuId from ERPUSERDB.dbo.MenuPermission
+) as NewMenu
+
+
+
+----------------- Missing Emp -----------------
+
+
+
+update HumanResource_EmployeeBasic 
+set 
+UnitID ='64', 
+DepartmentID ='3',
+SectionID=16,
+WingID=355, 
+DesignationID=352,
+JoiningDate='2024-02-01',
+JobLocationId ='",,"', 
+EmpCategoryID ='",,"', 
+DesignationID ='",,"', 
+EmpTypeID =3,
+DateOfBirth ='2001-05-31',  
+GenderID ='",,"', 
+ReligionID ='",,"' , 
+NIDNo ='",,"', 
+BloodGroupID ='",,"'  
+where EmpCode='073604';
+
+
+---------------------- Basic Common Table ------------------
+
+select * from Common_Unit where UnitName like '%CGL Unit-02%'
+select * from Common_Department where DepartmentName like '%Production%'
+select * from Common_Section where SectionName like '%Sewing%'
+select * from Common_Wing where WingName like '%Line - 345%'
+select * from Common_Designation where DesignationName like '%Line Iron Man%'
+select * from Common_EmploymentType
+
+
+
+
+----------------------   Designation / Section Add under unit-Department ---------------
+
+
+--select * from Common_Unit where UnitName like 'H%'
+--select * from Common_Department where DepartmentName like '%Administration%'
+
+--select UDepID from R_UnitDept where UnitID=31 and DepartmentID=154
+
+--select *  from R_DepDesignation where DesignationID=2881 and UDepID=(select UDepID from R_UnitDept where UnitID=31 and DepartmentID=12) -- Rope
+--select * from R_DepDesignation where DesignationID=5000 and UDepID=(select UDepID from R_UnitDept where UnitID=31 and DepartmentID=154) -- Slasher
+
+-----------------------------------------
+DECLARE @DesignationID INT =  ;
+DECLARE @UDepID INT;
+
+-- Retrieve UDepID from R_UnitDept table
+SELECT @UDepID = UDepID 
+FROM R_UnitDept 
+WHERE UnitID = 31 
+AND DepartmentID = 12 ;
+
+IF @UDepID IS NOT NULL
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM R_DepDesignation
+        WHERE DesignationID = @DesignationID 
+        AND UDepID = @UDepID
+    )
+    BEGIN
+        -- Insert into R_DepDesignation
+        INSERT INTO R_DepDesignation (UDepID, DesignationID)
+        VALUES (@UDepID, @DesignationID);
+        PRINT 'Record inserted successfully.';
+    END
+    ELSE
+    BEGIN
+        PRINT 'Record already exists.';
+    END;
+END
+ELSE
+BEGIN
+    PRINT 'UDepID not found.';
+END;
+
+
+-----
+select * from R_UnitDept
+
+select * from R_DeptSection
+
+
+
+-------------------   update missing data ------------------
+
+update HumanResource_EmployeeBasic set DesignationID='' ,UnitID='",,"',GenderID='",,"',DateOfBirth='",,"', EmpTypeID='",,"',WingID='",,"', NIDNo='",,"' , DepartmentID='' , SectionID='' , JoiningDate='' where EmpCode='' ; update Payroll_Employee_BasicSalary set GrossSalary='' where EmpID=dbo.REmpId('073559')
+
+
+select * from Common_Department where DepartmentName like '%Production%'
+select * from Common_Unit where UnitName like '%CCl%'
+Select * from Common_Gender
+select * from Common_Section where SectionName like '%Sewing%'
+select * from Common_EmploymentType
+select * from Common_Wing where WingName like '%056%'
+select * from Common_EmploymentCategory
+select * from Common_Religion
+
+--update HumanResource_EmployeeBasic set ReligionID= 1, EmpCategoryID=1 where EmpCode='073578' ;
+--update HumanResource_EmployeeBasic set MothersName='SAJ NAHAR' ,FathersName='SURUK MIA',UnitID=4,GenderID= 2 ,DateOfBirth='2004-05-10', EmpTypeID='3',WingID='245', NIDNo='5574764881' , DepartmentID=3 , SectionID='16' , JoiningDate='2024-02-01' where EmpCode='073578' ;
+
+
+--select * from ERPUSERDB.dbo.UserInfo where EmpId='073576'
+--update HumanResource_EmployeeBasic set Name='Mehedi Hasan' , Title='Md.' , NameBan=N'মেহেদি হাসান', MothersName='' ,FathersName='', UnitID=1,GenderID= 1 ,DateOfBirth='2004-01-01',DesignationID=17, EmpTypeID='1',WingID='', NIDNo='' , DepartmentID=2 , SectionID='' , JoiningDate='2024-02-01' ,EmpStatusID=1 where EmpCode='073576' ;
+
+
+
+
+................................... Organogram setup .......................
+
+select * from ApprovalProcess_LeaveRegister - already applied application
+select * from  Ogranogram_ApplicationsApproval - approver     set 
+select * from Attendance_LeaveRegister - leave application
+
+select * from ApprovalProcess_LeaveRegister where ToEmpId=dbo.REmpId('072784') and ActionStatus in ( 0,1)
+update ApprovalProcess_LeaveRegister set ToEmpId='221646' where ToEmpId=dbo.REmpId('006070') and ActionStatus in ( 0,1)
+
+

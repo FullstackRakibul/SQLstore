@@ -1,0 +1,597 @@
+Shift Setup 
+
+
+
+
+--------------------------------------------
+
+
+
+
+
+
+------------------------------------------ Shift Code 35 -----------------------
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+SET @ShiftID = 35;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-08';
+SET @LoopCounter = 1;
+
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) 
+    VALUES (
+        @ShiftID, -- ShiftID
+        @UnitId, -- UnitId
+        @HRMModeId, -- HRMModeId
+        @EffectDate, -- EffectDate
+        '1900-01-01 20:00:00.000', -- ShiftIn
+        '1900-01-01 20:00:00.000', -- ShiftLate
+        '1900-01-01 05:00:00.000', -- ShiftAbsent
+        '1900-01-01 04:40:00.000', -- ShiftEarly
+        '1900-01-01 05:00:00.000', -- ShiftOut
+        '1900-01-01 12:00:00.000', -- ShiftLastPunch
+        '1900-01-01 08:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 09:00:00.000', -- ShiftLunchTill
+        0, -- IsLunchPaid
+        NULL, -- ShiftIfterFrom
+        NULL, -- ShiftIfterTill
+        0, -- IsIfterPaid
+        '1900-01-01 01:00:00.000', -- NightBreakFrom
+        '1900-01-01 02:00:00.000', -- NightBreakTill
+        0, -- IsNightPaid
+        NULL, -- SheriBreakFrom
+        NULL, -- SheriBreakTill
+        0, -- IsSheriPaid
+        0, -- IsLunch
+        0, -- IsTiffin
+        0, -- TiffinTime
+        0, -- IsIfter
+        '1900-01-02 00:00:00.000', -- IfterTime
+        0, -- IsNight
+        '1900-01-01 06:30:00.000', -- NightTime
+        0, -- IsNightIncentive
+        NULL, -- NightIncentiveTime
+        2, -- ShiftType
+        34, -- ParentShiftID
+        51, -- ChangeOverShiftID
+        0, -- EXL
+        0, -- NOP
+        0, -- EE
+        NULL, -- ShiftShort
+        GETDATE(), -- EntryDate
+        NULL -- EntryUserId
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+
+
+
+
+
+------------------------------------------- Shift 34 -------------------------------
+-- Initialize variables
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+SET @ShiftID = 34;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-08';
+SET @LoopCounter = 1;
+
+
+
+
+-- Loop to insert data into #tempShift
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+	
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+        @ShiftID, @UnitId, @HRMModeId, @EffectDate, 
+        '1900-01-01 08:00:00.000', -- ShiftIn
+        '1900-01-01 08:00:00.000', -- ShiftLate
+        '1900-01-01 17:00:00.000', -- ShiftAbsent
+        '1900-01-01 16:40:00.000', -- ShiftEarly
+        '1900-01-01 17:00:00.000', -- ShiftOut
+        '1900-01-01 06:00:00.000', -- ShiftLastPunch
+        '1900-01-01 13:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 14:00:00.000', -- ShiftLunchTill
+
+
+        0, NULL, NULL, 0, '1900-01-01 01:00:00.000', '1900-01-01 02:00:00.000', 0, NULL,
+        NULL, 0, 0, 1, '1900-01-01 19:30:00.000', 0, NULL, 1, '1900-01-01 00:00:00.000',
+        NULL, NULL, 2, '34', 49, 0, 0, 0, NULL, '2024-03-06 08:30:00.000', NULL
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+--select top 3 * from #tempShift  where ShiftID in  (35 ,34) and UnitId =70 order by EffectDate desc
+
+
+--select top 4 * from Common_Shift_Dtl  where ShiftID in  (35 ,34) and UnitId =70 order by EffectDate desc
+--select * from Common_Shift where ShiftID in  (35 ,34)
+
+
+
+--------------------  Shitf Code - 1 ----------------------------
+
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+-- Initialize variables
+SET @ShiftID = 1;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-08';
+SET @LoopCounter = 1;
+
+-- Loop to insert data into Common_Shift_Dtl
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+	
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+    @ShiftID, -- ShiftID
+    @UnitId, -- UnitId
+    @HRMModeId, -- HRMModeId
+    @EffectDate, -- EffectDate
+    '1900-01-01 08:00:00.000', -- ShiftIn
+    '1900-01-01 08:10:00.000', -- ShiftLate
+    '1900-01-01 08:45:00.000', -- ShiftAbsent
+    '1900-01-01 17:00:00.000', -- ShiftEarly
+    '1900-01-01 17:00:00.000', -- ShiftOut
+    '1900-01-01 06:00:00.000', -- ShiftLastPunch
+    '1900-01-01 13:00:00.000', -- ShiftLunchFrom
+    '1900-01-01 14:00:00.000', -- ShiftLunchTill
+    0, -- IsLunchPaid
+    NULL, -- ShiftIfterFrom
+    NULL, -- ShiftIfterTill
+    0, -- IsIfterPaid
+    '1900-01-01 12:00:00.000', -- NightBreakFrom
+    '1900-01-01 01:00:00.000', -- NightBreakTill
+    1, -- IsNightPaid
+    NULL, -- SheriBreakFrom
+    NULL, -- SheriBreakTill
+    0, -- IsSheriPaid
+    1, -- IsLunch
+    0, -- IsTiffin
+    0, -- TiffinTime
+    0, -- IsIfter
+    '1900-01-01 19:30:00.000', -- IfterTime
+    0, -- IsNight
+    NULL, -- NightTime
+    1, -- IsNightIncentive
+    '1900-01-01 00:00:00.000', -- NightIncentiveTime
+    1, -- ShiftType
+    1, -- ParentShiftID
+    NULL, -- ChangeOverShiftID
+    0, -- EXL
+    0, -- NOP
+    0, -- EE
+    NULL, -- ShiftShort
+    GETDATE(), -- EntryDate
+    NULL -- EntryUserId
+);
+
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+
+
+--------------------  Shitf Code - 2 ----------------------------
+
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+-- Initialize variables
+SET @ShiftID = 2;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-08';
+SET @LoopCounter = 1;
+
+-- Loop to insert data into Common_Shift_Dtl
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+
+    -- Insert the specified value for each HRMModeId
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+        @ShiftID, -- ShiftID
+        @UnitId, -- UnitId
+        @HRMModeId, -- HRMModeId
+        @EffectDate, -- EffectDate
+        '1900-01-01 08:00:00.000', -- ShiftIn
+        '1900-01-01 08:00:00.000', -- ShiftLate
+        '1900-01-01 17:00:00.000', -- ShiftAbsent
+        '1900-01-01 16:40:00.000', -- ShiftEarly
+        '1900-01-01 17:00:00.000', -- ShiftOut
+        '1900-01-01 06:00:00.000', -- ShiftLastPunch
+        '1900-01-01 13:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 14:00:00.000', -- ShiftLunchTill
+        0, -- IsLunchPaid
+        NULL, -- ShiftIfterFrom
+        NULL, -- ShiftIfterTill
+        0, -- IsIfterPaid
+        '1900-01-01 02:00:00.000', -- NightBreakFrom
+        '1900-01-01 03:00:00.000', -- NightBreakTill
+        0, -- IsNightPaid
+        NULL, -- SheriBreakFrom
+        NULL, -- SheriBreakTill
+        0, -- IsSheriPaid
+        1, -- IsLunch
+        0, -- IsTiffin
+        0, -- TiffinTime
+        0, -- IsIfter
+        '1900-01-01 19:30:00.000', -- IfterTime
+        0, -- IsNight
+        NULL, -- NightTime
+        1, -- IsNightIncentive
+        '1900-01-01 00:00:00.000', -- NightIncentiveTime
+        1, -- ShiftType
+        2, -- ParentShiftID
+        NULL, -- ChangeOverShiftID
+        0, -- EXL
+        0, -- NOP
+        0, -- EE
+        NULL, -- ShiftShort
+        GETDATE(), -- EntryDate
+        NULL -- EntryUserId
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+
+
+
+
+
+
+
+
+-----------------------------------------------------    6 march and 7 march ----------------------------------------
+
+
+
+
+
+------------------------------------------ Shift Code 35 -----------------------
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+SET @ShiftID = 35;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-06';
+SET @LoopCounter = 1;
+
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) 
+    VALUES (
+        @ShiftID, -- ShiftID
+        @UnitId, -- UnitId
+        @HRMModeId, -- HRMModeId
+        @EffectDate, -- EffectDate
+        '1900-01-01 19:00:00.000', -- ShiftIn
+        '1900-01-01 19:00:00.000', -- ShiftLate
+        '1900-01-01 04:00:00.000', -- ShiftAbsent
+        '1900-01-01 03:40:00.000', -- ShiftEarly
+        '1900-01-01 04:00:00.000', -- ShiftOut
+        '1900-01-01 11:00:00.000', -- ShiftLastPunch
+        '1900-01-01 07:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 08:00:00.000', -- ShiftLunchTill
+        0, -- IsLunchPaid
+        NULL, -- ShiftIfterFrom
+        NULL, -- ShiftIfterTill
+        0, -- IsIfterPaid
+        '1900-01-01 00:00:00.000', -- NightBreakFrom
+        '1900-01-01 01:00:00.000', -- NightBreakTill
+        0, -- IsNightPaid
+        NULL, -- SheriBreakFrom
+        NULL, -- SheriBreakTill
+        0, -- IsSheriPaid
+        0, -- IsLunch
+        0, -- IsTiffin
+        0, -- TiffinTime
+        0, -- IsIfter
+        '1900-01-02 23:00:00.000', -- IfterTime
+        0, -- IsNight
+        '1900-01-01 05:30:00.000', -- NightTime
+        0, -- IsNightIncentive
+        NULL, -- NightIncentiveTime
+        2, -- ShiftType
+        34, -- ParentShiftID
+        51, -- ChangeOverShiftID
+        0, -- EXL
+        0, -- NOP
+        0, -- EE
+        NULL, -- ShiftShort
+        GETDATE(), -- EntryDate
+        NULL -- EntryUserId
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+
+
+
+
+
+------------------------------------------- Shift 34 -------------------------------
+-- Initialize variables
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+SET @ShiftID = 34;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-06';
+SET @LoopCounter = 1;
+
+
+
+
+-- Loop to insert data into #tempShift
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+	
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+        @ShiftID, @UnitId, @HRMModeId, @EffectDate, 
+        '1900-01-01 07:00:00.000', -- ShiftIn
+        '1900-01-01 07:00:00.000', -- ShiftLate
+        '1900-01-01 16:00:00.000', -- ShiftAbsent
+        '1900-01-01 15:40:00.000', -- ShiftEarly
+        '1900-01-01 16:00:00.000', -- ShiftOut
+        '1900-01-01 07:00:00.000', -- ShiftLastPunch
+        '1900-01-01 12:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 13:00:00.000', -- ShiftLunchTill
+
+
+        0, NULL, NULL, 0, '1900-01-01 00:00:00.000', '1900-01-01 01:00:00.000', 0, NULL,
+        NULL, 0, 0, 1, '1900-01-01 18:30:00.000', 0, NULL, 1, '1900-01-01 23:00:00.000',
+        NULL, NULL, 2, '34', 49, 0, 0, 0, NULL, '2024-03-06 07:30:00.000', NULL
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+--select top 3 * from #tempShift  where ShiftID in  (35 ,34) and UnitId =70 order by EffectDate desc
+
+
+--select top 4 * from Common_Shift_Dtl  where ShiftID in  (35 ,34) and UnitId =70 order by EffectDate desc
+--select * from Common_Shift where ShiftID in  (35 ,34)
+
+
+
+--------------------  Shitf Code - 1 ----------------------------
+
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+-- Initialize variables
+SET @ShiftID = 1;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-06';
+SET @LoopCounter = 1;
+
+-- Loop to insert data into Common_Shift_Dtl
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+	
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+    @ShiftID, -- ShiftID
+    @UnitId, -- UnitId
+    @HRMModeId, -- HRMModeId
+    @EffectDate, -- EffectDate
+    '1900-01-01 07:00:00.000', -- ShiftIn
+    '1900-01-01 07:10:00.000', -- ShiftLate
+    '1900-01-01 07:45:00.000', -- ShiftAbsent
+    '1900-01-01 16:00:00.000', -- ShiftEarly
+    '1900-01-01 16:00:00.000', -- ShiftOut
+    '1900-01-01 05:00:00.000', -- ShiftLastPunch
+    '1900-01-01 12:00:00.000', -- ShiftLunchFrom
+    '1900-01-01 13:00:00.000', -- ShiftLunchTill
+    0, -- IsLunchPaid
+    NULL, -- ShiftIfterFrom
+    NULL, -- ShiftIfterTill
+    0, -- IsIfterPaid
+    '1900-01-01 11:00:00.000', -- NightBreakFrom
+    '1900-01-01 12:00:00.000', -- NightBreakTill
+    1, -- IsNightPaid
+    NULL, -- SheriBreakFrom
+    NULL, -- SheriBreakTill
+    0, -- IsSheriPaid
+    1, -- IsLunch
+    0, -- IsTiffin
+    0, -- TiffinTime
+    0, -- IsIfter
+    '1900-01-01 18:30:00.000', -- IfterTime
+    0, -- IsNight
+    NULL, -- NightTime
+    1, -- IsNightIncentive
+    '1900-01-01 11:00:00.000', -- NightIncentiveTime
+    1, -- ShiftType
+    1, -- ParentShiftID
+    NULL, -- ChangeOverShiftID
+    0, -- EXL
+    0, -- NOP
+    0, -- EE
+    NULL, -- ShiftShort
+    GETDATE(), -- EntryDate
+    NULL -- EntryUserId
+);
+
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
+
+
+
+--------------------  Shitf Code - 2 ----------------------------
+
+DECLARE @ShiftID INT;
+DECLARE @UnitId INT;
+DECLARE @EffectDate DATE;
+DECLARE @HRMModeId INT;
+DECLARE @LoopCounter INT;
+
+-- Initialize variables
+SET @ShiftID = 2;
+SET @UnitId = 33;
+SET @EffectDate = '2024-03-06';
+SET @LoopCounter = 1;
+
+-- Loop to insert data into Common_Shift_Dtl
+WHILE @LoopCounter <= 3
+BEGIN
+    SET @HRMModeId = @LoopCounter;
+
+    -- Insert the specified value for each HRMModeId
+    INSERT INTO [CoreERP].[dbo].[Common_Shift_Dtl] (
+        [ShiftID], [UnitId], [HRMModeId], [EffectDate], [ShiftIn], [ShiftLate],
+        [ShiftAbsent], [ShiftEarly], [ShiftOut], [ShiftLastPunch], [ShiftLunchFrom],
+        [ShiftLunchTill], [IsLunchPaid], [ShiftIfterFrom], [ShiftIfterTill],
+        [IsIfterPaid], [NightBreakFrom], [NightBreakTill], [IsNightPaid], [SheriBreakFrom],
+        [SheriBreakTill], [IsSheriPaid], [IsLunch], [IsTiffin], [TiffinTime], [IsIfter],
+        [IfterTime], [IsNight], [NightTime], [IsNightIncentive], [NightIncentiveTime],
+        [ShiftType], [ParentShiftID], [ChangeOverShiftID], [EXL], [NOP], [EE], [ShiftShort],
+        [EntryDate], [EntryUserId]
+    ) VALUES (
+        @ShiftID, -- ShiftID
+        @UnitId, -- UnitId
+        @HRMModeId, -- HRMModeId
+        @EffectDate, -- EffectDate
+        '1900-01-01 08:00:00.000', -- ShiftIn
+        '1900-01-01 08:00:00.000', -- ShiftLate
+        '1900-01-01 17:00:00.000', -- ShiftAbsent
+        '1900-01-01 16:40:00.000', -- ShiftEarly
+        '1900-01-01 17:00:00.000', -- ShiftOut
+        '1900-01-01 06:00:00.000', -- ShiftLastPunch
+        '1900-01-01 13:00:00.000', -- ShiftLunchFrom
+        '1900-01-01 14:00:00.000', -- ShiftLunchTill
+        0, -- IsLunchPaid
+        NULL, -- ShiftIfterFrom
+        NULL, -- ShiftIfterTill
+        0, -- IsIfterPaid
+        '1900-01-01 01:00:00.000', -- NightBreakFrom
+        '1900-01-01 02:00:00.000', -- NightBreakTill
+        0, -- IsNightPaid
+        NULL, -- SheriBreakFrom
+        NULL, -- SheriBreakTill
+        0, -- IsSheriPaid
+        1, -- IsLunch
+        0, -- IsTiffin
+        0, -- TiffinTime
+        0, -- IsIfter
+        '1900-01-01 19:30:00.000', -- IfterTime
+        0, -- IsNight
+        NULL, -- NightTime
+        1, -- IsNightIncentive
+        '1900-01-01 00:00:00.000', -- NightIncentiveTime
+        1, -- ShiftType
+        2, -- ParentShiftID
+        NULL, -- ChangeOverShiftID
+        0, -- EXL
+        0, -- NOP
+        0, -- EE
+        NULL, -- ShiftShort
+        GETDATE(), -- EntryDate
+        NULL -- EntryUserId
+    );
+
+    SET @LoopCounter = @LoopCounter + 1;
+END;
