@@ -191,48 +191,48 @@ select * from Attendance_LeaveRegister where EmpId=dbo.REmpId('008556') and Star
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-MenuPermission:
+--MenuPermission:
 
 INSERT INTO ERPUSERDB.dbo.MenuPermission (UserId, MenuId, EntryDate)
 
 select *, getdate() from 
 (
-Select (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='067241') as UserId, MenuId as MenuId 
-from ERPUSERDB.dbo.MenuPermission Where UserId = (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='040052')
+Select (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='077754') as UserId, MenuId as MenuId 
+from ERPUSERDB.dbo.MenuPermission Where UserId = (select UserId from ERPUSERDB.dbo.UserInfo where EmpId='013634')
 except select UserId, MenuId from ERPUSERDB.dbo.MenuPermission
-) as NewMenu
+) as NewMenu;
 
 
 
 
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
-UserUnitPermission:
+--UserUnitPermission:
 
---INSERT INTO UserUnitPermission (UserId, CompanyId, UnitId, IsActive, IsDeleted)
+INSERT INTO UserUnitPermission (UserId, CompanyId, UnitId, IsActive, IsDeleted)
 
 select * --, getdate()
 from 
 (
-Select (select UserId from vw_EmployeeInfo where EmpCode='067241') as UserId,CompanyId as CompanyId, UnitId as UnitId, 1 as IsActive, 0 as IsDeleted
-from UserUnitPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='027893')
+Select (select UserId from vw_EmployeeInfo where EmpCode='077754') as UserId,CompanyId as CompanyId, UnitId as UnitId, 1 as IsActive, 0 as IsDeleted
+from UserUnitPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='013634')
 except select UserId, CompanyId, UnitId, IsActive, IsDeleted from UserUnitPermission
-) as NewUnit
+) as NewUnit;
 
 
 -------------------------------------------------UserCompanyPermission-------------------------------------------------------------
 
 
 
---INSERT INTO UserCompanyPermission (UserId, CompanyId, IsActive, IsDeleted)
+INSERT INTO UserCompanyPermission (UserId, CompanyId, IsActive, IsDeleted)
 
 select * --, getdate()
 from 
 (
-Select (select UserId from vw_EmployeeInfo where EmpCode='006858') as UserId,CompanyId as CompanyId, 1 as IsActive, 0 as IsDeleted
-from UserCompanyPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='010251')
+Select (select UserId from vw_EmployeeInfo where EmpCode='077754') as UserId,CompanyId as CompanyId, 1 as IsActive, 0 as IsDeleted
+from UserCompanyPermission Where UserId = (select UserId from vw_EmployeeInfo where EmpCode='013634')
 except select UserId, CompanyId, IsActive, IsDeleted from UserCompanyPermission
-) as NewCompany
+) as NewCompany;
 
 
 
@@ -392,6 +392,11 @@ VALUES
 select EmpID ,'2024-03-08',0,1,1,0,0,1,'EidHolidayAdjustment--', GETDATE(),1  
 from HumanResource_EmployeeBasic where EmpCode='#####' 
 
+--insert into Attendance_GeneralDuty ( EmpID , WorkDay , OWo , OMood , CWo , CMood , TWo , TMood , Remarks , EntryDate , EntryUserId )
+select EmpID ,'2024-05-31',0,1,1,0,0,1,'EidHolidayAdjustment~KAMAL', GETDATE(),1 from HumanResource_EmployeeBasic where EmpCode='",######,"' UNION ALL
+
+
+
 
 
 -----------------------  Allawance setup employeewise -----------------------
@@ -535,9 +540,42 @@ END
 CLOSE designations_cursor;
 DEALLOCATE designations_cursor;
 
+----------------------------------------------- Roster and Bulk Roster ------------------------------
+
+ SELECT * FROM Attendance_EmployeeRosterDetails
+
+
+ --INSERT INTO Attendance_EmployeeRosterDetails ( EmpID , WorkDay , ShiftID , EntryUserId , EntryDate)
+ SELECT DBO.REmpId('066576') , '"MULTIPLE DATE NEED TO SELECT"' , 35 , 1, GETDATE()
 
 
 
+ --::::::::::::::::::::::::::::::::::::::: BULK ROSTER SETUP
+
+
+
+DECLARE @Dates TABLE (WorkDay DATE);
+
+--INSERT INTO @Dates (WorkDay)
+VALUES ('2024-06-01'), ('2024-06-02'), ('2024-06-03'), ('2024-06-04'), ('2024-06-05'), ('2024-06-06'), ('2024-06-07');
+
+--INSERT INTO Attendance_EmployeeRosterDetails (EmpID, WorkDay, ShiftID, EntryUserId, EntryDate)
+SELECT e.EmpID, d.WorkDay, 35, 1, GETDATE()
+FROM HumanResource_EmployeeBasic e
+JOIN @Dates d ON 1=1 
+WHERE e.EmpCode IN (
+
+'041606'
+,'075447'
+
+);
+
+
+
+--------------- EID OT ADJUSTMENT ------------- OT DEDUCT
+
+--INSERT INTO Attendance_OTAdjustment ( EmpCode , EmpId , WorkDate , AdjustmentTo , OTHour , Remarks )
+SELECT '",EmpCode,"',DBO.REmpId('",EmpCode,"'),'",WORKDATE,"' , '",ADJUSTMENTDATE,"' , '",OTHOURS,"' , 'OTADJUSTFORADHA``' UNION ALL
 
 -------------------------------------------------------------------------------------
 

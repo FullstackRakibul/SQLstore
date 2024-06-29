@@ -441,11 +441,11 @@ TempProposedIncrement.ProposedDate = ProposedValues.ProposedDate
 --SELECT @emp_no=BI.emp_no,@gl_company_code=BI.company_code,@gl_branch_code=BI.branch_code
 --FROM emp_basic B INNER JOIN emp_basic_info BI ON B.emp_no=BI.emp_no WHERE B.emp_id=@emp_id
 
---EXEC [192.168.0.13,4368].[sqlsysdb].[dbo].[Update_increment] @emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0,@return_increment_code OUTPUT
+--EXEC [192.168.0.13,4368].[sqlsysdb].[dbo].[Update_increment] @emp_no,@effect_date,@increment_amount,'Jun 2024',100,@gl_company_code,@gl_branch_code,0,@return_increment_code OUTPUT
 
 --IF (@return_increment_code > 0 )
 --BEGIN
---EXEC [dbo].[Update_increment] @return_increment_code,@emp_no,@effect_date,@increment_amount,'Mar 2024',100,@gl_company_code,@gl_branch_code,0
+--EXEC [dbo].[Update_increment] @return_increment_code,@emp_no,@effect_date,@increment_amount,'Jun 2024',100,@gl_company_code,@gl_branch_code,0
 --UPDATE TempProposedIncrement SET IsUpdated=1 WHERE EmpID=@emp_id
 --END
 
@@ -506,10 +506,39 @@ END
 CLOSE DBCursor
 DEALLOCATE DBCursor
 
--------------------------------
+------------------------------- Designation Add
+
+insert into b_designation( Designation_code , designation_name , Designation_priority , designation_grade , designation_bangla , op_type, NewTableCodeId )
+select '5775' , 'Assistant Delivery Man', 0,4,'Gwmm‡U›U ‡Wwjfvwi g¨vb',2,1293
+
+-----------------------------------
+
+--------------------- GeneralDutyDay third 
 
 
 
 
+--------------------- GeneralDutyDay third 
 
+select * from B_branch
+
+
+select * from GeneralDutyDay where Branch_code=19 order by WorkDate desc
+
+
+
+DECLARE @Dates TABLE (WorkDay DATE);
+INSERT INTO @Dates (WorkDay)
+VALUES ('2024-05-03'), ('2024-05-17'), ('2024-05-31');
+
+
+INSERT INTO GeneralDutyDay (WorkDate, IsActive, branch_code)
+SELECT d.WorkDay, 1, b.branch_code
+FROM @Dates d
+CROSS JOIN B_branch b
+WHERE b.branch_code  in (
+19
+
+
+) 
 
